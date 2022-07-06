@@ -1,11 +1,11 @@
 from collections import defaultdict
-import logging
+import logging as lg
 import numpy as np
 
 
 class Logger:
     def __init__(self, console_logger):
-        self.console_logger = console_logger
+        self.console_logger: lg.Logger = console_logger
 
         self.use_tb = False
         self.use_sacred = False
@@ -56,10 +56,10 @@ class Logger:
 
 # set up a custom logger
 def get_logger():
-    logger = logging.getLogger()
+    logger = lg.getLogger()
     logger.handlers = []
-    ch = logging.StreamHandler()
-    formatter = logging.Formatter(
+    ch = lg.StreamHandler()
+    formatter = lg.Formatter(
         '[%(levelname)s %(asctime)s] %(name)s %(message)s', '%H:%M:%S')
     ch.setFormatter(formatter)
     logger.addHandler(ch)

@@ -1,6 +1,11 @@
-# Deep Multi-agent Reinforcement Learning for Food Allocation Problem
+# Deep Multi-agent Reinforcement Learning for Food Allocation Problem in Food Bank
 
-マルチエージェント強化学習アルゴリズム「QMIX」を用いた食品分配の最適化
+フードバンクにおける食品分配問題へのマルチエージェント深層強化学習アルゴリズム「QMIX」の適用
+
+## ライブラリ
+
+- 深層学習フレームワーク : PyTorch
+- 実験管理ツール : Sacred
 
 ## 論文
 
