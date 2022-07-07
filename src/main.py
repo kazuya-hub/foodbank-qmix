@@ -2,12 +2,13 @@
 
 import numpy as np
 import os
-# import collections
 from os.path import dirname, abspath
 from copy import deepcopy
 from sacred import Experiment, SETTINGS
+from sacred.run import Run
 from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
+import wandb
 import torch as th
 from utils.logging import get_logger
 import yaml
@@ -17,7 +18,10 @@ from run import run
 
 # set to "no" if you want to see stdout/stderr in console
 # Sacredの標準出力設定 "sys"(Windows), "fd"(Linux), "no"
-SETTINGS["CAPTURE_MODE"] = "sys"
+SETTINGS["CAPTURE_MODE"] = "no"
+
+WANDB_PROJECT = "qmix-example"
+WANDB_ENTITY = "lighthouse117"
 
 logger = get_logger()
 
@@ -30,7 +34,7 @@ results_path = os.path.join(dirname(dirname(abspath(__file__))), "results")
 
 
 @ex.main
-def my_main(_run, _config, _log):
+def my_main(_run: Run, _config, _log):
     """
     Sacredで実験を実行すると最初に呼び出される
     """
@@ -42,6 +46,11 @@ def my_main(_run, _config, _log):
 
     # run the framework
     run(_run, config, _log)
+
+    # ログファイルを記録
+    _run.add_artifact(os.path.join(results_path, "run_full.log"))  # Scared
+    # wandb.save(os.path.join(results_path, "run_full.log"),
+    #            policy="end")  # WandB
 
 
 def _get_config_from_yaml(file_name, subfolder):
@@ -59,7 +68,7 @@ def _get_config_from_yaml(file_name, subfolder):
 if __name__ == "__main__":
     # Get the defaults from default.yaml
     # default.yamlからデフォルトのパラメータを読み込む
-    with open(os.path.join(os.path.dirname(__file__), "config", "default.yaml"), "r") as f:
+    with open(os.path.join(os.path.dirname(__file__), "config", "default.yaml"), "r", encoding="utf-8") as f:
         try:
             config_dict = yaml.safe_load(f)
         except yaml.YAMLError as exc:
@@ -72,8 +81,12 @@ if __name__ == "__main__":
     parser.add_argument("--algo", default="qmix",
                         help="The algorithm to train the agent")
     # 環境設定用
-    parser.add_argument("--env", default="sc2",
+    parser.add_argument("--env", default="checkers",
                         help="Which environment settings to load")
+
+    # WandBを使用する際は"--wandb"をつけて実行
+    parser.add_argument("--wandb", action="store_true")
+
     # 引数を解析して取得
     args = parser.parse_args()
 
@@ -84,7 +97,7 @@ if __name__ == "__main__":
     # 最初に読み込んだdefaultにアルゴリズムと環境設定のパラメーターを結合
     config_dict = {**config_dict, **env_config, **algo_config}
 
-    print(yaml.dump(config_dict))
+    # print(yaml.dump(config_dict))
 
     # now add all the config to sacred
     # Scaredにパラメータを設定
@@ -96,5 +109,20 @@ if __name__ == "__main__":
     file_obs_path = os.path.join(results_path, "sacred")
     ex.observers.append(FileStorageObserver.create(file_obs_path))
 
-    # 実験を実行
+    # ======= WandB用 =======
+    # 初期化
+    wandb.init(
+        project=WANDB_PROJECT,
+        entity=WANDB_ENTITY,
+        mode="online" if args.wandb else "disabled"
+    )
+    # パラメータを設定
+    wandb.config.update(config_dict)
+
+    # SacredにWandBのIDを記録
+    ex.add_config({
+        "wandb_id": wandb.run.id
+    })
+
+    # Sacredの実験を実行
     ex.run()

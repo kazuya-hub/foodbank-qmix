@@ -6,6 +6,8 @@ import threading
 import torch as th
 import logging as lg
 from types import SimpleNamespace
+
+import wandb
 from utils.logging import Logger
 from utils.timehelper import time_left, time_str
 from os.path import dirname, abspath
@@ -69,9 +71,6 @@ def run(_run, _config, _log: lg.Logger):
 
     print("Exiting script")
 
-    # Making sure framework really exits
-    os._exit(os.EX_OK)
-
 
 def run_sequential(args, logger: Logger):
     '''
@@ -92,19 +91,31 @@ def run_sequential(args, logger: Logger):
     # Default/Base scheme
     # 環境やエージェントに関するスキーマを定義
     scheme = {
+        # グローバル状態の次元数
         "state": {"vshape": env_info["state_shape"]},
+        # 各エージェントの部分観測
         "obs": {"vshape": env_info["obs_shape"], "group": "agents"},
+        # 行動
         "actions": {"vshape": (1,), "group": "agents", "dtype": th.long},
+        # 選択可能な行動
         "avail_actions": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": th.int},
+        # 報酬
         "reward": {"vshape": (1,)},
         "terminated": {"vshape": (1,), "dtype": th.uint8},
     }
+    # groups: エージェント数分存在する情報（観測、行動）を管理するためのもの
     groups = {
         "agents": args.n_agents
     }
+    # EpisodeBatchの初期化に使われる
+    # OneHotベクトルで表す数を設定
     preprocess = {
         "actions": ("actions_onehot", [OneHot(out_dim=args.n_actions)])
     }
+
+    pprint.pprint("scheme: {}".format(scheme))
+    pprint.pprint("groups: {}".format(groups))
+    pprint.pprint("preprocess: {}".format(preprocess))
 
     # 経験再生用バッファ
     buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
@@ -165,6 +176,7 @@ def run_sequential(args, logger: Logger):
 
     # start training
     # ----------------- トレーニング開始！！！ -----------------
+
     episode = 0
     last_test_T = -args.test_interval - 1
     last_log_T = 0
@@ -179,7 +191,7 @@ def run_sequential(args, logger: Logger):
     while runner.t_env <= args.t_max:
 
         # Run for a whole episode at a time
-        # １つのエピソード全体を実行
+        # １つのエピソード全体を実行してバッチを取得
         episode_batch = runner.run(test_mode=False)
         # 経験再生バッファにエピソードを保存
         buffer.insert_episode_batch(episode_batch)
@@ -231,6 +243,7 @@ def run_sequential(args, logger: Logger):
 
         if (runner.t_env - last_log_T) >= args.log_interval:
             logger.log_stat("episode", episode, runner.t_env)
+            wandb.log({"episode": episode}, step=runner.t_env)
             logger.print_recent_stats()
             last_log_T = runner.t_env
 
