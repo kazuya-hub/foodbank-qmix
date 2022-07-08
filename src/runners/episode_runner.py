@@ -8,6 +8,7 @@ from controllers.basic_controller import BasicMAC
 
 # from smac.env import StarCraft2Env
 from envs.checkers import Checkers
+from envs.foodbank.food_allocation import FoodAllocationEnv
 from utils.logging import Logger
 
 
@@ -23,7 +24,7 @@ class EpisodeRunner:
         assert self.batch_size == 1
 
         # 環境
-        self.env = Checkers(**self.args.env_args)
+        self.env = FoodAllocationEnv(**self.args.env_args)
 
         # 最大タイムステップ数
         self.episode_limit = self.env.episode_limit

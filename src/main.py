@@ -81,7 +81,7 @@ if __name__ == "__main__":
     parser.add_argument("--algo", default="qmix",
                         help="The algorithm to train the agent")
     # 環境設定用
-    parser.add_argument("--env", default="checkers",
+    parser.add_argument("--env", default="foodbank",
                         help="Which environment settings to load")
 
     # WandBを使用する際は"--wandb"をつけて実行
