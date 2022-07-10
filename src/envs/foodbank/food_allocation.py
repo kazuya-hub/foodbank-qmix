@@ -29,7 +29,7 @@ class FoodAllocationEnv():
     フードバンクにおけるマルチエージェント食品分配シミュレーション環境
     """
 
-    def __init__(self, full_observable, episode_limit, debug, situation_name, reward_mean_weight, reward_std_weight, reward_completed_bonus, reward_step_cost, seed,):
+    def __init__(self, full_observable, episode_limit, debug, situation_name, reward_mean_weight, reward_std_weight, reward_complete_bonus, reward_step_cost, seed,):
         food_params = get_food_params(situation_name)
 
         self.n_agents = food_params["n_agents"]
@@ -41,7 +41,7 @@ class FoodAllocationEnv():
         self.reward_step_cost = reward_step_cost
         self.reward_mean_weight = reward_mean_weight
         self.reward_std_weight = reward_std_weight
-        self.reward_completed_bonus = reward_completed_bonus
+        self.reward_complete_bonus = reward_complete_bonus
 
         self.episode_limit = episode_limit
 
@@ -148,13 +148,14 @@ class FoodAllocationEnv():
             for agent_i in range(self.n_agents):
                 logging.debug("Agent{}: {}".format(
                     agent_i, self.agents_stock[agent_i]))
-            logging.debug("Reward = {}".format(reward).center(60, "-"))
 
         if status is EpisodeStatus.COMPLETED:
             terminated = True
-            reward += 10
+            reward += self.reward_complete_bonus
             info["completed"] = True
             if self.debug:
+                logging.debug("Complete Bonus: {}".format(
+                    self.reward_complete_bonus))
                 logging.debug("Episode Completed.")
 
         elif status is EpisodeStatus.TIMEOUT:
@@ -167,6 +168,9 @@ class FoodAllocationEnv():
         if terminated:
             self._episode_count += 1
             info["leftover"] = sum(self.bank_stock)
+
+        if self.debug:
+            logging.debug("Reward = {}".format(reward).center(60, "-"))
 
         return reward, terminated, info
 
@@ -221,7 +225,7 @@ class FoodAllocationEnv():
         # 平均
         reward_mean_satis = np.mean(agents_satisfaction * 10)
         # 標準偏差
-        reward_std_satis = np.std(agents_satisfaction * 10)
+        reward_std_satis = np.std(agents_satisfaction * 100)
 
         # 重み
         reward = self.reward_mean_weight * reward_mean_satis - \
@@ -233,9 +237,10 @@ class FoodAllocationEnv():
                 agents_satisfaction))
             logging.debug("Leftover Count: {}".format(sum(self.bank_stock)))
 
-            logging.debug("REWARD (Mean Satis.): {}".format(reward_mean_satis))
-            logging.debug("REWARD (Std Satis.): {}".format(
+            logging.debug("Mean Satis.: {}".format(reward_mean_satis))
+            logging.debug("Std Satis.: {}".format(
                 reward_std_satis))
+            logging.debug("REWARD (Satisfaction): {}".format(reward))
 
         return reward
 

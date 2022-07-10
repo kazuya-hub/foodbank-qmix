@@ -9,7 +9,7 @@ env_args:
 
   reward_mean_weight: 1
   reward_std_weight: 1
-  reward_completed_bonus: 10
+  reward_complete_bonus: 10
   reward_step_cost: -0.1
   
   # n_agents: 2
