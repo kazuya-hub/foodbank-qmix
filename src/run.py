@@ -194,7 +194,8 @@ def run_sequential(args, logger: Logger):
 
         # Run for a whole episode at a time
         # １つのエピソード全体を実行してバッチを取得
-        episode_batch = runner.run(test_mode=False)
+        episode_batch = runner.run(episode=episode, test_mode=False)
+
         # 経験再生バッファにエピソードを保存
         buffer.insert_episode_batch(episode_batch)
 
@@ -230,7 +231,7 @@ def run_sequential(args, logger: Logger):
             last_test_T = runner.t_env
             for _ in range(n_test_runs):
                 # 複数回テスト
-                runner.run(test_mode=True)
+                runner.run(episode=episode, test_mode=True)
 
         # if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
         #     model_save_time = runner.t_env
@@ -247,8 +248,6 @@ def run_sequential(args, logger: Logger):
         episode += 1
 
         if (runner.t_env - last_log_T) >= args.log_interval:
-            logger.log_stat("episode", episode, runner.t_env)
-            wandb.log({"episode": episode}, step=runner.t_env)
             logger.print_recent_stats()
             last_log_T = runner.t_env
 

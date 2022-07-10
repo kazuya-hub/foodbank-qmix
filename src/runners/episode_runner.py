@@ -26,6 +26,8 @@ class EpisodeRunner:
         # 環境
         self.env = FoodAllocationEnv(**self.args.env_args)
 
+        self.episode = 0
+
         # 最大タイムステップ数
         self.episode_limit = self.env.episode_limit
         # 現在のタイムステップ
@@ -76,10 +78,12 @@ class EpisodeRunner:
         # タイムステップを0に
         self.t = 0
 
-    def run(self, test_mode=False):
+    def run(self, episode, test_mode=False,):
         """
         1エピソードを実行してバッチを返す
         """
+
+        self.episode = episode
 
         # 環境を初期化
         self.reset(test_mode=test_mode)
@@ -203,6 +207,9 @@ class EpisodeRunner:
         """
         前回記録時からエピソードごとの報酬総和の平均・分散を記録
         """
+        self.logger.log_stat("episode", self.episode, self.t_env)
+        wandb.log({"episode": self.episode}, step=self.t_env)
+
         # 報酬の総和の平均・分散
         total_reward_mean = np.mean(total_reward_history)
         self.logger.log_stat(prefix + "total_reward",

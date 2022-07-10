@@ -3,6 +3,8 @@ import enum
 import copy
 import logging
 
+from envs.foodbank.food_situations import get_food_params
+
 # AGENTS_COUNT = 2
 # FOODS = [20, 20, 20]
 # NUM_FOODS = len(FOODS)
@@ -27,12 +29,20 @@ class FoodAllocationEnv():
     フードバンクにおけるマルチエージェント食品分配シミュレーション環境
     """
 
-    def __init__(self, n_agents, n_foods, requests, initial_stock, full_observable, step_cost, episode_limit, clock, debug, seed):
-        self.n_agents = n_agents
-        self.n_foods = n_foods
-        self.requests = requests
-        self.initial_stock = initial_stock
-        self._step_cost = step_cost
+    def __init__(self, full_observable, episode_limit, debug, situation_name, reward_mean_weight, reward_std_weight, reward_completed_bonus, reward_step_cost, seed,):
+        food_params = get_food_params(situation_name)
+
+        self.n_agents = food_params["n_agents"]
+
+        self.n_foods = food_params["n_foods"]
+        self.requests = food_params["requests"]
+        self.initial_stock = food_params["initial_stock"]
+
+        self.reward_step_cost = reward_step_cost
+        self.reward_mean_weight = reward_mean_weight
+        self.reward_std_weight = reward_std_weight
+        self.reward_completed_bonus = reward_completed_bonus
+
         self.episode_limit = episode_limit
 
         self.n_actions = self.n_foods + 1
@@ -41,7 +51,6 @@ class FoodAllocationEnv():
         self._episode_count = 0
 
         self.full_observable = full_observable
-        self._add_clock = clock
         self.debug = debug
 
         self.timeouts = 0
@@ -109,7 +118,7 @@ class FoodAllocationEnv():
 
         status = self.check_status()
 
-        reward = self._step_cost
+        reward = self.reward_step_cost
         terminated = False
         info = {
             "completed": False,
@@ -212,9 +221,11 @@ class FoodAllocationEnv():
         # 平均
         reward_mean_satis = np.mean(agents_satisfaction * 10)
         # 標準偏差
-        reward_std_satis = np.std(agents_satisfaction * 100)
+        reward_std_satis = np.std(agents_satisfaction * 10)
 
-        reward = reward_mean_satis - reward_std_satis
+        # 重み
+        reward = self.reward_mean_weight * reward_mean_satis - \
+            self.reward_std_weight * reward_std_satis
 
         if self.debug:
             # logging.debug("Agents Stock: {}".format(self.agents_stock))
