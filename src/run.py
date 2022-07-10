@@ -45,11 +45,12 @@ def run(_run, _config, _log: lg.Logger):
     unique_token = "{}__{}".format(
         args.name, datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     args.unique_token = unique_token
-    if args.use_tensorboard:
-        tb_logs_direc = os.path.join(
-            dirname(dirname(abspath(__file__))), "results", "tb_logs")
-        tb_exp_direc = os.path.join(tb_logs_direc, "{}").format(unique_token)
-        logger.setup_tb(tb_exp_direc)
+
+    # if args.use_tensorboard:
+    #     tb_logs_direc = os.path.join(
+    #         dirname(dirname(abspath(__file__))), "results", "tb_logs")
+    #     tb_exp_direc = os.path.join(tb_logs_direc, "{}").format(unique_token)
+    #     logger.setup_tb(tb_exp_direc)
 
     # sacred is on by default
     logger.setup_sacred(_run)
@@ -136,43 +137,44 @@ def run_sequential(args, logger: Logger):
 
     # グラボ用
     if args.use_cuda:
+        print("Use CUDA!")
         learner.cuda()
 
     # チェックポイントモード用
-    if args.checkpoint_path != "":
+    # if args.checkpoint_path != "":
 
-        timesteps = []
-        timestep_to_load = 0
+    #     timesteps = []
+    #     timestep_to_load = 0
 
-        if not os.path.isdir(args.checkpoint_path):
-            logger.console_logger.info(
-                "Checkpoint directiory {} doesn't exist".format(args.checkpoint_path))
-            return
+    #     if not os.path.isdir(args.checkpoint_path):
+    #         logger.console_logger.info(
+    #             "Checkpoint directiory {} doesn't exist".format(args.checkpoint_path))
+    #         return
 
-        # Go through all files in args.checkpoint_path
-        for name in os.listdir(args.checkpoint_path):
-            full_name = os.path.join(args.checkpoint_path, name)
-            # Check if they are dirs the names of which are numbers
-            if os.path.isdir(full_name) and name.isdigit():
-                timesteps.append(int(name))
+    #     # Go through all files in args.checkpoint_path
+    #     for name in os.listdir(args.checkpoint_path):
+    #         full_name = os.path.join(args.checkpoint_path, name)
+    #         # Check if they are dirs the names of which are numbers
+    #         if os.path.isdir(full_name) and name.isdigit():
+    #             timesteps.append(int(name))
 
-        if args.load_step == 0:
-            # choose the max timestep
-            timestep_to_load = max(timesteps)
-        else:
-            # choose the timestep closest to load_step
-            timestep_to_load = min(
-                timesteps, key=lambda x: abs(x - args.load_step))
+    #     if args.load_step == 0:
+    #         # choose the max timestep
+    #         timestep_to_load = max(timesteps)
+    #     else:
+    #         # choose the timestep closest to load_step
+    #         timestep_to_load = min(
+    #             timesteps, key=lambda x: abs(x - args.load_step))
 
-        model_path = os.path.join(args.checkpoint_path, str(timestep_to_load))
+    #     model_path = os.path.join(args.checkpoint_path, str(timestep_to_load))
 
-        logger.console_logger.info("Loading model from {}".format(model_path))
-        learner.load_models(model_path)
-        runner.t_env = timestep_to_load
+    #     logger.console_logger.info("Loading model from {}".format(model_path))
+    #     learner.load_models(model_path)
+    #     runner.t_env = timestep_to_load
 
-        if args.evaluate or args.save_replay:
-            evaluate_sequential(args, runner)
-            return
+    #     if args.evaluate or args.save_replay:
+    #         evaluate_sequential(args, runner)
+    #         return
 
     # start training
     # ----------------- トレーニング開始！！！ -----------------
@@ -180,7 +182,7 @@ def run_sequential(args, logger: Logger):
     episode = 0
     last_test_T = -args.test_interval - 1
     last_log_T = 0
-    model_save_time = 0
+    # model_save_time = 0
 
     start_time = time.time()
     last_time = start_time
@@ -214,9 +216,11 @@ def run_sequential(args, logger: Logger):
 
         # Execute test runs once in a while
         # 定期的にテストでgreedyに実行する
+        # test_nepisode回分
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)
-        if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
 
+        # テストするタイミングになったら
+        if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
             logger.console_logger.info(
                 "t_env: {} / {}".format(runner.t_env, args.t_max))
             logger.console_logger.info("Estimated time left: {}. Time passed: {}".format(
@@ -225,19 +229,20 @@ def run_sequential(args, logger: Logger):
 
             last_test_T = runner.t_env
             for _ in range(n_test_runs):
+                # 複数回テスト
                 runner.run(test_mode=True)
 
-        if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
-            model_save_time = runner.t_env
-            save_path = os.path.join(
-                args.local_results_path, "models", args.unique_token, str(runner.t_env))
-            # "results/models/{}".format(unique_token)
-            os.makedirs(save_path, exist_ok=True)
-            logger.console_logger.info("Saving models to {}".format(save_path))
+        # if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
+        #     model_save_time = runner.t_env
+        #     save_path = os.path.join(
+        #         args.local_results_path, "models", args.unique_token, str(runner.t_env))
+        #     # "results/models/{}".format(unique_token)
+        #     os.makedirs(save_path, exist_ok=True)
+        #     logger.console_logger.info("Saving models to {}".format(save_path))
 
-            # learner should handle saving/loading -- delegate actor save/load to mac,
-            # use appropriate filenames to do critics, optimizer states
-            learner.save_models(save_path)
+        #     # learner should handle saving/loading -- delegate actor save/load to mac,
+        #     # use appropriate filenames to do critics, optimizer states
+        #     learner.save_models(save_path)
 
         episode += 1
 

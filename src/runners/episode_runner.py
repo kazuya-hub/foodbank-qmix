@@ -7,7 +7,7 @@ import numpy as np
 from controllers.basic_controller import BasicMAC
 
 # from smac.env import StarCraft2Env
-from envs.checkers import Checkers
+# from envs.checkers import Checkers
 from envs.foodbank.food_allocation import FoodAllocationEnv
 from utils.logging import Logger
 
@@ -65,14 +65,14 @@ class EpisodeRunner:
     def close_env(self):
         self.env.close()
 
-    def reset(self):
+    def reset(self, test_mode=False):
         """
         エピソードの最初に環境など諸々を初期化
         """
         # 新しいバッチを用意
         self.batch = self.new_batch()
         # 環境をリセット
-        self.env.reset()
+        self.env.reset(test_mode=test_mode)
         # タイムステップを0に
         self.t = 0
 
@@ -82,7 +82,7 @@ class EpisodeRunner:
         """
 
         # 環境を初期化
-        self.reset()
+        self.reset(test_mode=test_mode)
 
         terminated = False  # a
         total_reward = 0  # エピソードで得られた報酬の総和
@@ -184,7 +184,7 @@ class EpisodeRunner:
         total_reward_history.append(total_reward)
 
         if test_mode and (len(self.test_returns) == self.args.test_nepisode):
-            # テストの際
+            # テストの際のログ
             self._log(total_reward_history, sum_stats, log_prefix)
         elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:
             # 定期的にログをとる

@@ -20,7 +20,7 @@ from run import run
 # Sacredの標準出力設定 "sys"(Windows), "fd"(Linux), "no"
 SETTINGS["CAPTURE_MODE"] = "no"
 
-WANDB_PROJECT = "qmix-example"
+WANDB_PROJECT = "foodbank-qmix"
 WANDB_ENTITY = "lighthouse117"
 
 logger = get_logger()

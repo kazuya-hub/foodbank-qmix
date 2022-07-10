@@ -3,13 +3,6 @@ import enum
 import copy
 import logging
 
-AGENTS_COUNT = 1
-FOODS = [5, 5]
-NUM_FOODS = len(FOODS)
-REQUESTS = [
-    [1, 3],
-]
-
 # AGENTS_COUNT = 2
 # FOODS = [20, 20, 20]
 # NUM_FOODS = len(FOODS)
@@ -53,7 +46,7 @@ class FoodAllocationEnv():
 
         self.timeouts = 0
 
-    def reset(self):
+    def reset(self, test_mode=False):
         """
         環境を初期化
         エージェントの観測とグローバル状態を返す
@@ -67,6 +60,9 @@ class FoodAllocationEnv():
 
         # 終了フラグをリセット
         self.agents_done = [False for _ in range(self.n_agents)]
+
+        # テストの際にログを残す
+        self.debug = test_mode
 
         # 最小残り個数を計算する
         # 食品ごとの要求の合計
@@ -106,43 +102,58 @@ class FoodAllocationEnv():
         # タイムステップを進める
         self._step_count += 1
 
-        if self.debug:
-            logging.debug("Actions".center(60, "-"))
-
         # エージェントごと
         for agent_i, action in enumerate(agents_action):
             # 行動を出力
             self.take_action(agent_i, action)
 
-        logging.debug("Bank Stock".center(60, "-"))
-        logging.debug(self.bank_stock)
-        logging.debug("Agent Stock".center(60, "-"))
-        for agent_i in range(self.n_agents):
-            logging.debug("Agent{}: {}".format(
-                agent_i, self.agents_stock[agent_i]))
-
         status = self.check_status()
 
-        reward = self.get_reward(status)
-
+        reward = self._step_cost
         terminated = False
-        reward += self._step_cost
-        info = {}
+        info = {
+            "completed": False,
+            "timeout": False,
+        }
+
+        # エピソード終了時に報酬を与える
+        if status in (EpisodeStatus.COMPLETED, EpisodeStatus.TIMEOUT):
+            agents_satisfaction = self.get_satisfaction()
+            reward += self.get_reward(agents_satisfaction)
+
+            for agent_i in range(self.n_agents):
+                info.update(
+                    {"agent{}_satisfaction".format(agent_i): agents_satisfaction[agent_i]})
+            info.update({
+                "satisfaction_mean": np.mean(agents_satisfaction),
+                "satisfaction_std": np.std(agents_satisfaction),
+            })
+
+        if self.debug:
+            logging.debug("TIMESTEP {}".format(
+                self._step_count).center(60, "-"))
+            logging.debug("Actions".center(60, "-"))
+            logging.debug("Bank Stock".center(60, "-"))
+            logging.debug(self.bank_stock)
+            logging.debug("Agent Stock".center(60, "-"))
+            for agent_i in range(self.n_agents):
+                logging.debug("Agent{}: {}".format(
+                    agent_i, self.agents_stock[agent_i]))
+            logging.debug("Reward = {}".format(reward).center(60, "-"))
 
         if status is EpisodeStatus.COMPLETED:
             terminated = True
             reward += 10
             info["completed"] = True
-            logging.debug("Episode Completed.")
+            if self.debug:
+                logging.debug("Episode Completed.")
 
         elif status is EpisodeStatus.TIMEOUT:
             terminated = True
             info["timeout"] = True
             self.timeouts += 1
-            logging.debug("Episode Timeouts.")
-
-        if self.debug:
-            logging.debug("Reward = {}".format(reward).center(60, "-"))
+            if self.debug:
+                logging.debug("Episode Timeouts.")
 
         if terminated:
             self._episode_count += 1
@@ -156,7 +167,8 @@ class FoodAllocationEnv():
         """
         if action == self.get_total_actions() - 1:
             # No-op（何もしない）
-            logging.debug("Agent {}: No-op".format(agent_i))
+            if self.debug:
+                logging.debug("Agent {}: No-op".format(agent_i))
             return
 
         food = action
@@ -166,51 +178,53 @@ class FoodAllocationEnv():
             self.bank_stock[food] -= 1
             # 自身の在庫が1つ増える
             self.agents_stock[agent_i][food] += 1
-            logging.debug(
-                "Agent {}: Get a Food{}".format(agent_i, food))
+            if self.debug:
+                logging.debug(
+                    "Agent {}: Get a Food{}".format(agent_i, food))
         else:
             # 在庫がない（他のエージェントにもうとられた）
             # TODO: 選択した行動と一致していないので検討が必要
-            logging.debug(
-                "Agent {}: Couldn't Get a Food{}".format(agent_i, food))
+            if self.debug:
+                logging.debug(
+                    "Agent {}: Couldn't Get a Food{}".format(agent_i, food))
 
-    def get_reward(self, status):
+    def get_satisfaction(self):
+        # 残り個数が 最小残り個数+5個以下 だった場合に報酬
+        # reward_no_food_waste = 0
+        # if sum(self.bank_stock) <= self.ideal_min_leftover + 5:
+        #     reward_no_food_waste = 10
+
+        # 満足度による報酬
+        # 各食品の満足度 = 獲得した個数 / 要求個数
+        rates = np.array(self.agents_stock) / np.array(self.requests)
+        # 最大値を1に
+        rates[rates > 1.0] = 1.0
+        # 各エージェントの満足度 = 各食品の満足度の和
+        agents_satisfaction = np.mean(rates, axis=1)
+
+        return agents_satisfaction
+
+    def get_reward(self, agents_satisfaction):
         """
         報酬関数
         """
 
-        reward = 0
+        # 平均
+        reward_mean_satis = np.mean(agents_satisfaction * 10)
+        # 標準偏差
+        reward_std_satis = np.std(agents_satisfaction * 100)
 
-        # エピソード終了時に報酬を与える
-        if status in (EpisodeStatus.COMPLETED, EpisodeStatus.TIMEOUT):
-            # 残り個数が 最小残り個数+5個以下 だった場合に報酬
-            # reward_no_food_waste = 0
-            # if sum(self.bank_stock) <= self.ideal_min_leftover + 5:
-            #     reward_no_food_waste = 10
+        reward = reward_mean_satis - reward_std_satis
 
-            # 満足度による報酬
-            # 各食品の満足度 = 獲得した個数 / 要求個数
-            rates = np.array(self.agents_stock) / np.array(self.requests)
-            # 最大値を1に
-            rates[rates > 1.0] = 1.0
-            # 各エージェントの満足度 = 各食品の満足度の和
-            agents_satisfaction = np.mean(rates, axis=1)
-
-            # 平均
-            reward_mean_satis = np.mean(agents_satisfaction * 100)
-            # 分散
-            reward_variance_satis = np.var(agents_satisfaction * 100)
-
-            reward = reward_mean_satis + reward_variance_satis
-
+        if self.debug:
             # logging.debug("Agents Stock: {}".format(self.agents_stock))
             logging.debug("Agents Satisfaction: {}".format(
                 agents_satisfaction))
             logging.debug("Leftover Count: {}".format(sum(self.bank_stock)))
 
             logging.debug("REWARD (Mean Satis.): {}".format(reward_mean_satis))
-            logging.debug("REWARD (Variance Satis.): {}".format(
-                reward_variance_satis))
+            logging.debug("REWARD (Std Satis.): {}".format(
+                reward_std_satis))
 
         return reward
 
@@ -363,3 +377,6 @@ class FoodAllocationEnv():
         #         logging.debug("Last actions {}".format(self.last_action))
 
         # return state
+
+    def close(self):
+        return
