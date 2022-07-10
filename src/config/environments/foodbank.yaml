@@ -3,7 +3,7 @@ env: foodbank
 env_args:
   full_observable: False
   step_cost: -0.01
-  max_steps: 100
+  episode_limit: 100
   clock: False
   debug: True
 
@@ -14,9 +14,9 @@ env_args:
     - 5
     - 5
   requests:
-    - - 1
-      - 3
     - - 2
+      - 3
+    - - 4
       - 3
 
   # continuing_episode: False

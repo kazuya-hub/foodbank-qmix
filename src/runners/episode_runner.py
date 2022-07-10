@@ -159,7 +159,8 @@ class EpisodeRunner:
         self.batch.update({"actions": actions}, ts=self.t)
 
         # ------ ログをまとめる ------
-        # 使われていないので空？
+
+        # グローバルから参照渡しで読み込む
         sum_stats = self.test_stats if test_mode else self.train_stats
         total_reward_history = self.test_returns if test_mode else self.train_returns
 

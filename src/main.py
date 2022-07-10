@@ -32,6 +32,9 @@ ex.captured_out_filter = apply_backspaces_and_linefeeds
 
 results_path = os.path.join(dirname(dirname(abspath(__file__))), "results")
 
+np.set_printoptions(precision=5, floatmode='maxprec_equal')
+np.set_printoptions(suppress=True)
+
 
 @ex.main
 def my_main(_run: Run, _config, _log):
