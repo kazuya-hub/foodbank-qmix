@@ -23,6 +23,15 @@ food_params = {
             [3, 10],
         ],
     },
+    "2a2f_c2": {
+        "n_agents": 2,
+        "n_foods": 2,
+        "initial_stock": [10, 5],
+        "requests": [
+            [7, 2],
+            [5, 5],
+        ],
+    },
     "2a3f_p": {
         "n_agents": 2,
         "n_foods": 3,
