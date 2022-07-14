@@ -50,6 +50,15 @@ food_params = {
             [5, 7, 1],
         ],
     },
+    "2a3f_p2": {
+        "n_agents": 2,
+        "n_foods": 3,
+        "initial_stock": [4, 4, 4],
+        "requests": [
+            [2, 2, 2],
+            [2, 2, 2],
+        ],
+    },
     "2a3f_c1": {
         "n_agents": 2,
         "n_foods": 3,
@@ -57,6 +66,27 @@ food_params = {
         "requests": [
             [6, 8, 10],
             [6, 8, 10],
+        ],
+    },
+    "3a3f_p1": {
+        "n_agents": 3,
+        "n_foods": 3,
+        "initial_stock": [6, 6, 6],
+        "requests": [
+            [2, 2, 2],
+            [2, 2, 2],
+            [2, 2, 2],
+        ],
+    },
+    "4a4f_p1": {
+        "n_agents": 4,
+        "n_foods": 4,
+        "initial_stock": [8, 8, 8, 8],
+        "requests": [
+            [2, 2, 2, 2],
+            [2, 2, 2, 2],
+            [2, 2, 2, 2],
+            [2, 2, 2, 2],
         ],
     },
     "5a5f_p1": {
