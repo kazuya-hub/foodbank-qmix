@@ -307,8 +307,11 @@ class FoodAllocationEnv():
         """
         avail_actions = []
         for agent_i in range(self.n_agents):
-            avail_agent = [1] * self.n_actions
-            avail_actions.append(avail_agent)
+            avail_agent = np.zeros(self.n_foods)
+            avail_food = np.array(self.bank_stock) > 0
+            avail_agent[avail_food] = 1
+            avail_actions.append(np.append(avail_agent, 1))
+        # print(avail_actions)
         return avail_actions
 
     def get_obs(self, debug=True):
