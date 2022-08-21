@@ -35,8 +35,8 @@ class FoodAllocationEnv():
         self.n_agents = food_params["n_agents"]
 
         self.n_foods = food_params["n_foods"]
-        self.requests = food_params["requests"]
-        self.initial_stock = food_params["initial_stock"]
+        self.requests = np.array(food_params["requests"])
+        self.initial_stock = np.array(food_params["initial_stock"])
 
         self.reward_step_cost = reward_step_cost
         self.reward_mean_weight = reward_mean_weight
@@ -48,14 +48,14 @@ class FoodAllocationEnv():
         self.n_actions = self.n_foods + 1
 
         self._step_count = None
-        self._episode_count = 0
+        # self._episode_count = 0
 
         self.full_observable = full_observable
         self.debug = debug
 
         self.timeouts = 0
 
-    def reset(self, test_mode=False):
+    def reset(self, episode, test_mode=False, print_log=False):
         """
         環境を初期化
         エージェントの観測とグローバル状態を返す
@@ -67,11 +67,14 @@ class FoodAllocationEnv():
         # エージェントの在庫をリセット
         self.agents_stock = np.zeros((self.n_agents, self.n_foods))
 
+        self.episode = episode
+
         # 終了フラグをリセット
         self.agents_done = [False for _ in range(self.n_agents)]
 
         # テストの際にログを残す
         self.debug = test_mode
+        self.print_log = print_log
 
         # 最小残り個数を計算する
         # 食品ごとの要求の合計
@@ -80,9 +83,10 @@ class FoodAllocationEnv():
         # leftover = self.initial_stock - requests_sum
         # self.ideal_min_leftover = np.sum((leftover > 0) * leftover)
 
-        if self.debug:
+        if self.print_log:
+            logging.debug("\n\n")
             logging.debug(
-                "Started Episode {}".format(self._episode_count).center(
+                "Started Episode {}".format(self.episode).center(
                     60, "*"
                 )
             )
@@ -138,7 +142,7 @@ class FoodAllocationEnv():
                 "satisfaction_std": np.std(agents_satisfaction),
             })
 
-        if self.debug:
+        if self.print_log:
             logging.debug("TIMESTEP {}".format(
                 self._step_count).center(60, "-"))
             logging.debug("Actions".center(60, "-"))
@@ -153,7 +157,7 @@ class FoodAllocationEnv():
             terminated = True
             reward += self.reward_complete_bonus
             info["completed"] = True
-            if self.debug:
+            if self.print_log:
                 logging.debug("Complete Bonus: {}".format(
                     self.reward_complete_bonus))
                 logging.debug("Episode Completed.")
@@ -162,14 +166,14 @@ class FoodAllocationEnv():
             terminated = True
             info["timeout"] = True
             self.timeouts += 1
-            if self.debug:
+            if self.print_log:
                 logging.debug("Episode Timeouts.")
 
         if terminated:
-            self._episode_count += 1
+            # self._episode_count += 1
             info["leftover"] = sum(self.bank_stock)
 
-        if self.debug:
+        if self.print_log:
             logging.debug("Reward = {}".format(reward).center(60, "-"))
 
         return reward, terminated, info
@@ -180,7 +184,7 @@ class FoodAllocationEnv():
         """
         if action == self.get_total_actions() - 1:
             # No-op（何もしない）
-            if self.debug:
+            if self.print_log:
                 logging.debug("Agent {}: No-op".format(agent_i))
             return
 
@@ -191,13 +195,13 @@ class FoodAllocationEnv():
             self.bank_stock[food] -= 1
             # 自身の在庫が1つ増える
             self.agents_stock[agent_i][food] += 1
-            if self.debug:
+            if self.print_log:
                 logging.debug(
                     "Agent {}: Get a Food{}".format(agent_i, food))
         else:
             # 在庫がない（他のエージェントにもうとられた）
             # TODO: 選択した行動と一致していないので検討が必要
-            if self.debug:
+            if self.print_log:
                 logging.debug(
                     "Agent {}: Couldn't Get a Food{}".format(agent_i, food))
 
@@ -209,7 +213,7 @@ class FoodAllocationEnv():
 
         # 満足度による報酬
         # 各食品の満足度 = 獲得した個数 / 要求個数
-        rates = np.array(self.agents_stock) / np.array(self.requests)
+        rates = self.agents_stock / self.requests
         # 最大値を1に
         rates[rates > 1.0] = 1.0
         # 各エージェントの満足度 = 各食品の満足度の和
@@ -231,7 +235,7 @@ class FoodAllocationEnv():
         reward = self.reward_mean_weight * reward_mean_satis - \
             self.reward_std_weight * reward_std_satis
 
-        if self.debug:
+        if self.print_log:
             # logging.debug("Agents Stock: {}".format(self.agents_stock))
             logging.debug("Agents Satisfaction: {}".format(
                 agents_satisfaction))
@@ -261,7 +265,7 @@ class FoodAllocationEnv():
 
         # 要求のある食品の在庫がもうどれもない（全エージェントの取れる行動がない）
         required_count = np.sum(gap, axis=0)
-        required_food_stock = np.array(self.bank_stock)[required_count > 0]
+        required_food_stock = self.bank_stock[required_count > 0]
         if np.all(required_food_stock == 0):
             return EpisodeStatus.COMPLETED
 
@@ -308,9 +312,16 @@ class FoodAllocationEnv():
         avail_actions = []
         for agent_i in range(self.n_agents):
             avail_agent = np.zeros(self.n_foods)
-            avail_food = np.array(self.bank_stock) > 0
+            # avail_food = (self.bank_stock > 0) & (
+            #     self.agents_stock[agent_i] < self.requests[agent_i])
+            avail_food = self.bank_stock > 0
             avail_agent[avail_food] = 1
             avail_actions.append(np.append(avail_agent, 1))
+
+            if self.print_log:
+                logging.debug(
+                    "Agent{} Avail Food: {}".format(agent_i, avail_agent))
+
         # print(avail_actions)
         return avail_actions
 
@@ -341,7 +352,7 @@ class FoodAllocationEnv():
             agent_obs = np.concatenate([remaining, satisfaction])
             _obs.append(agent_obs)
 
-            if self.debug and debug:
+            if self.print_log and debug:
                 logging.debug("Obs Agent{}".format(agent_i).center(60, "-"))
                 # logging.debug(
                 #     "Avail. actions {}".format(

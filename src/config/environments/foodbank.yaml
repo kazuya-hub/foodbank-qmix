@@ -5,7 +5,7 @@ env_args:
   episode_limit: 100
   debug: True
 
-  situation_name: "3f3f_p1"
+  situation_name: "10a10f_c1"
 
   reward_mean_weight: 1
   reward_std_weight: 1

@@ -229,9 +229,14 @@ def run_sequential(args, logger: Logger):
             last_time = time.time()
 
             last_test_T = runner.t_env
+
+            print_log = True
             for _ in range(n_test_runs):
                 # 複数回テスト
-                runner.run(episode=episode, test_mode=True)
+                # 初回のみログ
+                runner.run(episode=episode, test_mode=True,
+                           print_log=print_log)
+                print_log = False
 
         # if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
         #     model_save_time = runner.t_env

@@ -67,18 +67,18 @@ class EpisodeRunner:
     def close_env(self):
         self.env.close()
 
-    def reset(self, test_mode=False):
+    def reset(self, episode, test_mode=False, print_log=False):
         """
         エピソードの最初に環境など諸々を初期化
         """
         # 新しいバッチを用意
         self.batch = self.new_batch()
         # 環境をリセット
-        self.env.reset(test_mode=test_mode)
+        self.env.reset(episode, test_mode=test_mode, print_log=print_log)
         # タイムステップを0に
         self.t = 0
 
-    def run(self, episode, test_mode=False,):
+    def run(self, episode, test_mode=False, print_log=False):
         """
         1エピソードを実行してバッチを返す
         """
@@ -86,7 +86,7 @@ class EpisodeRunner:
         self.episode = episode
 
         # 環境を初期化
-        self.reset(test_mode=test_mode)
+        self.reset(episode=episode, test_mode=test_mode, print_log=print_log)
 
         terminated = False  # a
         total_reward = 0  # エピソードで得られた報酬の総和
