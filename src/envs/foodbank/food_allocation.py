@@ -312,9 +312,10 @@ class FoodAllocationEnv():
         avail_actions = []
         for agent_i in range(self.n_agents):
             avail_agent = np.zeros(self.n_foods)
-            # avail_food = (self.bank_stock > 0) & (
-            #     self.agents_stock[agent_i] < self.requests[agent_i])
-            avail_food = self.bank_stock > 0
+            # 要求個数以上取れないようにする
+            avail_food = (self.bank_stock > 0) & (
+                self.agents_stock[agent_i] < self.requests[agent_i])
+            # avail_food = self.bank_stock > 0
             avail_agent[avail_food] = 1
             avail_actions.append(np.append(avail_agent, 1))
 
