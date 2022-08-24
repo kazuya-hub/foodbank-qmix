@@ -138,6 +138,26 @@ food_params = {
             [4, 2, 3],
         ],
     },
+    "3a3f_c6": {
+        "n_agents": 3,
+        "n_foods": 3,
+        "initial_stock": [5, 5, 5],
+        "requests": [
+            [5, 1, 1],
+            [1, 5, 1],
+            [1, 1, 5],
+        ],
+    },
+    "3a3f_c7": {
+        "n_agents": 3,
+        "n_foods": 3,
+        "initial_stock": [2, 6, 8],
+        "requests": [
+            [1, 4, 4],
+            [1, 3, 4],
+            [2, 3, 4],
+        ],
+    },
     "4a4f_p1": {
         "n_agents": 4,
         "n_foods": 4,
