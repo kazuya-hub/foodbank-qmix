@@ -227,9 +227,9 @@ class FoodAllocationEnv():
         """
 
         # 平均
-        reward_mean_satis = np.mean(agents_satisfaction * 10)
+        reward_mean_satis = np.mean(agents_satisfaction)
         # 標準偏差
-        reward_std_satis = np.std(agents_satisfaction * 100)
+        reward_std_satis = np.std(agents_satisfaction)
 
         # 重み
         reward = self.reward_mean_weight * reward_mean_satis - \

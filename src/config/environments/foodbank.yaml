@@ -2,15 +2,15 @@ env: foodbank
 
 env_args:
   full_observable: False
-  episode_limit: 100
+  episode_limit: 50
   debug: True
 
-  situation_name: "10a10f_c4"
+  situation_name: "3a3f_c4"
 
   reward_mean_weight: 1
   reward_std_weight: 1
-  reward_complete_bonus: 10
-  reward_step_cost: -0.1
+  reward_complete_bonus: 0
+  reward_step_cost: -0.01
   
   # n_agents: 2
   # n_foods: 2
