@@ -20,8 +20,8 @@ from run import run
 # Sacredの標準出力設定 "sys"(Windows), "fd"(Linux), "no"
 SETTINGS["CAPTURE_MODE"] = "no"
 
-WANDB_PROJECT = "foodbank-qmix"
-WANDB_ENTITY = "lighthouse117"
+WANDB_PROJECT = "test"
+WANDB_ENTITY = "kazuyasakakibara"
 
 logger = get_logger()
 
@@ -86,6 +86,9 @@ if __name__ == "__main__":
     # 環境設定用
     parser.add_argument("--env", default="foodbank",
                         help="Which environment settings to load")
+    # シチュエーション指定
+    parser.add_argument("--situ", default="",
+                        help="Which situation to overwrite")
 
     # WandBを使用する際は"--wandb"をつけて実行
     parser.add_argument("--wandb", action="store_true")
@@ -99,6 +102,13 @@ if __name__ == "__main__":
 
     # 最初に読み込んだdefaultにアルゴリズムと環境設定のパラメーターを結合
     config_dict = {**config_dict, **env_config, **algo_config}
+
+    # シチュエーションを上書きする
+    if args.situ:
+        config_dict["env_args"]["situation_name"] = args.situ
+        
+    print(yaml.dump(config_dict))
+    # exit()
 
     # print(yaml.dump(config_dict))
 
@@ -117,6 +127,7 @@ if __name__ == "__main__":
     wandb.init(
         project=WANDB_PROJECT,
         entity=WANDB_ENTITY,
+        name=config_dict["env_args"]["situation_name"],
         mode="online" if args.wandb else "disabled"
     )
     # パラメータを設定
