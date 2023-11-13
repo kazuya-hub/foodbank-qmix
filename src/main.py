@@ -89,6 +89,9 @@ if __name__ == "__main__":
     # シチュエーション指定
     parser.add_argument("--situ", default="",
                         help="Which situation to overwrite")
+    # t_max指定
+    parser.add_argument("--tmax", default="",
+                        help="")
 
     # WandBを使用する際は"--wandb"をつけて実行
     parser.add_argument("--wandb", action="store_true")
@@ -106,6 +109,9 @@ if __name__ == "__main__":
     # シチュエーションを上書きする
     if args.situ:
         config_dict["env_args"]["situation_name"] = args.situ
+
+    if args.tmax:
+        config_dict["t_max"] = int(args.tmax)
         
     print(yaml.dump(config_dict))
     # exit()
