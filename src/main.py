@@ -134,7 +134,8 @@ if __name__ == "__main__":
         project=WANDB_PROJECT,
         entity=WANDB_ENTITY,
         name=config_dict["env_args"]["situation_name"],
-        mode="online" if args.wandb else "disabled"
+        mode="online" if args.wandb else "disabled",
+        group=os.uname().nodename
     )
     # パラメータを設定
     wandb.config.update(config_dict)
