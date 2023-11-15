@@ -8,6 +8,7 @@ from sacred import Experiment, SETTINGS
 from sacred.run import Run
 from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
+import socket
 import wandb
 import torch as th
 from utils.logging import get_logger
@@ -135,7 +136,7 @@ if __name__ == "__main__":
         entity=WANDB_ENTITY,
         name=config_dict["env_args"]["situation_name"],
         mode="online" if args.wandb else "disabled",
-        group=os.uname().nodename
+        group=socket.gethostname()
     )
     # パラメータを設定
     wandb.config.update(config_dict)
