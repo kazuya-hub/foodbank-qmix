@@ -1,7 +1,50 @@
+import re
 
 
 def get_food_params(name):
-    return food_params[name]
+    try:
+        return food_params[name]
+    except KeyError: # food_paramsに無いシチュエーションを指定された場合は生成を試みる
+        match = re.match(r"^(\d+)a(\d+)f_(.+)$", name)
+        if match is None:
+            raise
+
+        match_result = match.groups()
+        n_agents = int(match_result[0])
+        n_foods = int(match_result[1])
+        situation_type = match_result[2]
+        if n_agents <= 0 or n_foods <= 0:
+            raise
+
+        if situation_type == "lc1" and (n_agents % 5 == 0) and (n_foods % 5 == 0):
+            return generate_lc1_situation(n_agents, n_foods)
+        else:
+            raise
+
+
+def generate_lc1_situation(n_agents, n_foods):
+    lc1_request_template = [
+        [1, 2, 3, 2, 4],
+        [3, 1, 2, 4, 2],
+        [4, 3, 1, 2, 2],
+        [2, 2, 4, 1, 3],
+        [2, 4, 2, 3, 1],
+    ]
+
+    initial_stock = [int(n_agents * 4 / 5) for f in range(n_foods)]
+    requests = [
+        [lc1_request_template[a % 5][f % 5] for f in range(n_foods)]
+        for a in range(n_agents)
+    ]
+
+    situation = {
+        "n_agents": n_agents,
+        "n_foods": n_foods,
+        "initial_stock": initial_stock,
+        "requests": requests,
+    }
+
+    return situation
 
 
 food_params = {
