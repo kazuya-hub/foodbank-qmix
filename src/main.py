@@ -79,7 +79,7 @@ if __name__ == "__main__":
             assert False, "default.yaml error: {}".format(exc)
 
     # Load algorithm and env base configs
-    # 使用するアルゴリズムと環境設定を引数から読み込む
+    # 使用するアルゴリズムと環境設定をコマンドライン引数から読み込む
     parser = argparse.ArgumentParser()
     # アルゴリズム用
     parser.add_argument("--algo", default="qmix",
@@ -91,8 +91,10 @@ if __name__ == "__main__":
     parser.add_argument("--situ", default="",
                         help="Which situation to overwrite")
     # t_max指定
-    parser.add_argument("--tmax", default="",
-                        help="")
+    parser.add_argument("--tmax", default="", help="")
+    
+    # episode_limit指定
+    parser.add_argument("--eplimit", default="", help="")
 
     # WandBを使用する際は"--wandb"をつけて実行
     parser.add_argument("--wandb", action="store_true")
@@ -107,12 +109,15 @@ if __name__ == "__main__":
     # 最初に読み込んだdefaultにアルゴリズムと環境設定のパラメーターを結合
     config_dict = {**config_dict, **env_config, **algo_config}
 
-    # シチュエーションを上書きする
+    # コンフィグの値を上書きする
     if args.situ:
         config_dict["env_args"]["situation_name"] = args.situ
 
     if args.tmax:
         config_dict["t_max"] = int(args.tmax)
+
+    if args.eplimit:
+        config_dict["env_args"]["episode_limit"] = int(args.eplimit)
         
     print(yaml.dump(config_dict))
     # exit()
