@@ -56,8 +56,9 @@ class EpsilonGreedyActionSelector():
 
         # mask actions that are excluded from selection
         masked_q_values = agent_inputs.clone()
-        masked_q_values[avail_actions == 0.0] = - \
-            float("inf")  # should never be selected!
+        if self.args.mask_unavailable_actions:
+            masked_q_values[avail_actions == 0.0] = - \
+                float("inf")  # should never be selected!
         
         if print_log:
             np.set_printoptions(precision=3, suppress=True, threshold=np.inf, linewidth=np.inf)
