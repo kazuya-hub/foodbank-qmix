@@ -193,20 +193,28 @@ class FoodAllocationEnv():
 
         food = action
 
-        if self.bank_stock[food] > 0:
-            # フードバンクから１つ取る
-            self.bank_stock[food] -= 1
-            # 自身の在庫が1つ増える
-            self.agents_stock[agent_i][food] += 1
-            if self.print_log:
-                self.logger.console_logger.debug(
-                    "Agent {}: Get a Food{}".format(agent_i, food))
-        else:
+        if self.bank_stock[food] <= 0:
             # 在庫がない（他のエージェントにもうとられた）
             # TODO: 選択した行動と一致していないので検討が必要
             if self.print_log:
                 self.logger.console_logger.debug(
                     "Agent {}: Couldn't Get a Food{}".format(agent_i, food))
+            return
+        
+        if self.requests[agent_i][food] <= self.agents_stock[agent_i][food]:
+            # すでに要求個数を満たしている
+            if self.print_log:
+                self.logger.console_logger.debug(
+                    "Agent {}: Couldn't Get a Food{}".format(agent_i, food))
+            return
+
+        # フードバンクから１つ取る
+        self.bank_stock[food] -= 1
+        # 自身の在庫が1つ増える
+        self.agents_stock[agent_i][food] += 1
+        if self.print_log:
+            self.logger.console_logger.debug(
+                "Agent {}: Get a Food{}".format(agent_i, food))
 
     def get_satisfaction(self):
         # 残り個数が 最小残り個数+5個以下 だった場合に報酬
