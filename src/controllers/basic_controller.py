@@ -2,6 +2,7 @@ from __future__ import annotations
 from modules.agents.rnn_agent import RNNAgent
 from components.action_selectors import EpsilonGreedyActionSelector
 import torch as th
+from utils.logging import Logger
 
 
 # This multi-agent controller shares parameters between agents
@@ -31,7 +32,7 @@ class BasicMAC:
 
         self.hidden_states = None
 
-    def select_actions(self, ep_batch, t_ep, t_env, bs=slice(None), test_mode=False):
+    def select_actions(self, ep_batch, t_ep, t_env, bs=slice(None), test_mode=False, logger:Logger = None, print_log=False):
         """
         エピソードの開始から現在までの情報を受け取り、行動を選択する
         """
@@ -39,7 +40,7 @@ class BasicMAC:
         avail_actions = ep_batch["avail_actions"][:, t_ep]
         agent_outputs = self.forward(ep_batch, t_ep, test_mode=test_mode)
         chosen_actions = self.action_selector.select_action(
-            agent_outputs[bs], avail_actions[bs], t_env, test_mode=test_mode)
+            agent_outputs[bs], avail_actions[bs], t_env, test_mode=test_mode, logger=logger, print_log=print_log)
         return chosen_actions
 
     def forward(self, ep_batch, t, test_mode=False):
