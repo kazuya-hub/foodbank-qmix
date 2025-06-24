@@ -2,6 +2,7 @@ import numpy as np
 import enum
 import copy
 import logging
+from utils.logging import Logger
 
 from envs.foodbank.food_situations import get_food_params
 
@@ -29,7 +30,7 @@ class FoodAllocationEnv():
     フードバンクにおけるマルチエージェント食品分配シミュレーション環境
     """
 
-    def __init__(self, full_observable, episode_limit, debug, situation_name, reward_mean_weight, reward_std_weight, reward_complete_bonus, reward_step_cost, seed,):
+    def __init__(self, full_observable, episode_limit, debug, situation_name, reward_mean_weight, reward_std_weight, reward_complete_bonus, reward_step_cost, seed, logger: Logger):
         food_params = get_food_params(situation_name)
 
         self.n_agents = food_params["n_agents"]
@@ -54,6 +55,8 @@ class FoodAllocationEnv():
         self.debug = debug
 
         self.timeouts = 0
+
+        self.logger = logger
 
     def reset(self, episode, test_mode=False, print_log=False):
         """
@@ -84,21 +87,21 @@ class FoodAllocationEnv():
         # self.ideal_min_leftover = np.sum((leftover > 0) * leftover)
 
         if self.print_log:
-            logging.debug("\n\n")
-            logging.debug(
+            self.logger.console_logger.debug("\n\n")
+            self.logger.console_logger.debug(
                 "Started Episode {}".format(self.episode).center(
                     60, "*"
                 )
             )
-            logging.debug("Bank Stock".center(60, "-"))
-            logging.debug(self.bank_stock)
-            logging.debug("Agent Stock".center(60, "-"))
+            self.logger.console_logger.debug("Bank Stock".center(60, "-"))
+            self.logger.console_logger.debug(self.bank_stock)
+            self.logger.console_logger.debug("Agent Stock".center(60, "-"))
             for agent_i in range(self.n_agents):
-                logging.debug("Agent{}: {}".format(
+                self.logger.console_logger.debug("Agent{}: {}".format(
                     agent_i, self.agents_stock[agent_i]))
-            logging.debug("Agent Request".center(60, "-"))
+            self.logger.console_logger.debug("Agent Request".center(60, "-"))
             for agent_i in range(self.n_agents):
-                logging.debug("Agent{}: {}".format(
+                self.logger.console_logger.debug("Agent{}: {}".format(
                     agent_i, self.requests[agent_i]))
 
         return self.get_obs(debug=False), self.get_state()
@@ -143,14 +146,14 @@ class FoodAllocationEnv():
             })
 
         if self.print_log:
-            logging.debug("TIMESTEP {}".format(
+            self.logger.console_logger.debug("TIMESTEP {}".format(
                 self._step_count).center(60, "-"))
-            logging.debug("Actions".center(60, "-"))
-            logging.debug("Bank Stock".center(60, "-"))
-            logging.debug(self.bank_stock)
-            logging.debug("Agent Stock".center(60, "-"))
+            self.logger.console_logger.debug("Actions".center(60, "-"))
+            self.logger.console_logger.debug("Bank Stock".center(60, "-"))
+            self.logger.console_logger.debug(self.bank_stock)
+            self.logger.console_logger.debug("Agent Stock".center(60, "-"))
             for agent_i in range(self.n_agents):
-                logging.debug("Agent{}: {}".format(
+                self.logger.console_logger.debug("Agent{}: {}".format(
                     agent_i, self.agents_stock[agent_i]))
 
         if status is EpisodeStatus.COMPLETED:
@@ -158,23 +161,23 @@ class FoodAllocationEnv():
             reward += self.reward_complete_bonus
             info["completed"] = True
             if self.print_log:
-                logging.debug("Complete Bonus: {}".format(
+                self.logger.console_logger.debug("Complete Bonus: {}".format(
                     self.reward_complete_bonus))
-                logging.debug("Episode Completed.")
+                self.logger.console_logger.debug("Episode Completed.")
 
         elif status is EpisodeStatus.TIMEOUT:
             terminated = True
             info["timeout"] = True
             self.timeouts += 1
             if self.print_log:
-                logging.debug("Episode Timeouts.")
+                self.logger.console_logger.debug("Episode Timeouts.")
 
         if terminated:
             # self._episode_count += 1
             info["leftover"] = sum(self.bank_stock)
 
         if self.print_log:
-            logging.debug("Reward = {}".format(reward).center(60, "-"))
+            self.logger.console_logger.debug("Reward = {}".format(reward).center(60, "-"))
 
         return reward, terminated, info
 
@@ -185,7 +188,7 @@ class FoodAllocationEnv():
         if action == self.get_total_actions() - 1:
             # No-op（何もしない）
             if self.print_log:
-                logging.debug("Agent {}: No-op".format(agent_i))
+                self.logger.console_logger.debug("Agent {}: No-op".format(agent_i))
             return
 
         food = action
@@ -196,13 +199,13 @@ class FoodAllocationEnv():
             # 自身の在庫が1つ増える
             self.agents_stock[agent_i][food] += 1
             if self.print_log:
-                logging.debug(
+                self.logger.console_logger.debug(
                     "Agent {}: Get a Food{}".format(agent_i, food))
         else:
             # 在庫がない（他のエージェントにもうとられた）
             # TODO: 選択した行動と一致していないので検討が必要
             if self.print_log:
-                logging.debug(
+                self.logger.console_logger.debug(
                     "Agent {}: Couldn't Get a Food{}".format(agent_i, food))
 
     def get_satisfaction(self):
@@ -236,15 +239,15 @@ class FoodAllocationEnv():
             self.reward_std_weight * reward_std_satis
 
         if self.print_log:
-            # logging.debug("Agents Stock: {}".format(self.agents_stock))
-            logging.debug("Agents Satisfaction: {}".format(
+            # self.logger.console_logger.debug("Agents Stock: {}".format(self.agents_stock))
+            self.logger.console_logger.debug("Agents Satisfaction: {}".format(
                 agents_satisfaction))
-            logging.debug("Leftover Count: {}".format(sum(self.bank_stock)))
+            self.logger.console_logger.debug("Leftover Count: {}".format(sum(self.bank_stock)))
 
-            logging.debug("Mean Satis.: {}".format(reward_mean_satis))
-            logging.debug("Std Satis.: {}".format(
+            self.logger.console_logger.debug("Mean Satis.: {}".format(reward_mean_satis))
+            self.logger.console_logger.debug("Std Satis.: {}".format(
                 reward_std_satis))
-            logging.debug("REWARD (Satisfaction): {}".format(reward))
+            self.logger.console_logger.debug("REWARD (Satisfaction): {}".format(reward))
 
         return reward
 
@@ -320,7 +323,7 @@ class FoodAllocationEnv():
             avail_actions.append(np.append(avail_agent, 1))
 
             if self.print_log:
-                logging.debug(
+                self.logger.console_logger.debug(
                     "Agent{} Avail Food: {}".format(agent_i, avail_agent))
 
         # print(avail_actions)
@@ -354,17 +357,17 @@ class FoodAllocationEnv():
             _obs.append(agent_obs)
 
             if self.print_log and debug:
-                logging.debug("Obs Agent{}".format(agent_i).center(60, "-"))
-                # logging.debug(
+                self.logger.console_logger.debug("Obs Agent{}".format(agent_i).center(60, "-"))
+                # self.logger.console_logger.debug(
                 #     "Avail. actions {}".format(
                 #         self.get_avail_agent_actions(agent_id)
                 #     )
                 # )
-                # logging.debug("Move feats {}".format(move_feats))
-                # logging.debug("Enemy feats {}".format(enemy_feats))
-                # logging.debug("Ally feats {}".format(ally_feats))
-                # logging.debug("Own feats {}".format(own_feats))
-                logging.debug(agent_obs)
+                # self.logger.console_logger.debug("Move feats {}".format(move_feats))
+                # self.logger.console_logger.debug("Enemy feats {}".format(enemy_feats))
+                # self.logger.console_logger.debug("Ally feats {}".format(ally_feats))
+                # self.logger.console_logger.debug("Own feats {}".format(own_feats))
+                self.logger.console_logger.debug(agent_obs)
 
         if self.full_observable:
             _obs = np.array(_obs).flatten().tolist()
@@ -401,11 +404,11 @@ class FoodAllocationEnv():
         # state = state.astype(dtype=np.float32)
 
         # if self.debug:
-        #     logging.debug("STATE".center(60, "-"))
-        #     logging.debug("Ally state {}".format(state_dict["allies"]))
-        #     logging.debug("Enemy state {}".format(state_dict["enemies"]))
+        #     self.logger.console_logger.debug("STATE".center(60, "-"))
+        #     self.logger.console_logger.debug("Ally state {}".format(state_dict["allies"]))
+        #     self.logger.console_logger.debug("Enemy state {}".format(state_dict["enemies"]))
         #     if self.state_last_action:
-        #         logging.debug("Last actions {}".format(self.last_action))
+        #         self.logger.console_logger.debug("Last actions {}".format(self.last_action))
 
         # return state
 
