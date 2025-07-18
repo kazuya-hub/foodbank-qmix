@@ -325,7 +325,7 @@ class ReplayBuffer(EpisodeBatch):
 
     def sample(self, batch_size):
         """
-        バッファからエピソードを1つランダムに抽出
+        バッファからエピソードをランダムにbatch_size個抽出
         """
         assert self.can_sample(batch_size)
         if self.episodes_in_buffer == batch_size:
