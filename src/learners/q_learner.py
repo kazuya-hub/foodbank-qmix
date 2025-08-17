@@ -95,7 +95,8 @@ class QLearner:
 
         # Mask out unavailable actions
         # 選択不可能な行動はマイナスの大きい数を入れて、最大のQ値に選ばれないようにする
-        target_mac_out[avail_actions[:, 1:] == 0] = -9999999
+        if self.args.mask_unavailable_actions:
+            target_mac_out[avail_actions[:, 1:] == 0] = -9999999
 
         # Max over target Q-Values
         # 次状態における最大のQ値
@@ -112,7 +113,8 @@ class QLearner:
             # エージェントごとのQ値の出力（予測値）
             mac_out_detach = mac_out.clone().detach()
             # 選択不可能な行動をつぶす
-            mac_out_detach[avail_actions == 0] = -9999999
+            if self.args.mask_unavailable_actions:
+                mac_out_detach[avail_actions == 0] = -9999999
             # Main Networkで次状態における最大価値の行動を求める
             cur_max_actions = mac_out_detach[:, 1:].max(dim=3, keepdim=True)[1]
             # 上で求めた行動に対応するQ値はTarget Networkから抽出する
