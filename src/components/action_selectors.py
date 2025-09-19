@@ -50,6 +50,10 @@ class EpsilonGreedyActionSelector():
         # Assuming agent_inputs is a batch of Q-Values for each agent bav
         self.epsilon = self.schedule.eval(t_env)
 
+        if self.args.epsilon_oscillation == "tanh_sine_phase0":
+            self.epsilon *= (1 + np.tanh(8 * np.sin(10 * t_env / self.args.t_max * np.pi) + 6)) / 2
+        if self.args.epsilon_oscillation == "tanh_sine_phase-0.5":
+            self.epsilon *= (1 + np.tanh(8 * np.sin((10 * t_env / self.args.t_max - 0.5) * np.pi) + 6)) / 2
         if test_mode:
             # Greedy action selection only
             self.epsilon = 0.0
