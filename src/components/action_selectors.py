@@ -74,6 +74,7 @@ class EpsilonGreedyActionSelector():
                 logger.console_logger.debug(f"Agent{agent_i}: {avail_actions[0][agent_i].detach().numpy()}")
 
         random_numbers = th.rand_like(agent_inputs[:, :, 0])
+        pick_random = (random_numbers < self.epsilon).long() # shape: [1, n_agents]、dtype: int32
         if self.args.enable_fixed_wait_action_prob:
             # enable_fixed_wait_action_probがTrueなら、epsilon-greedyでランダム行動を取るときに
             # 待機行動が選ばれる確率がfixed_wait_action_probになるようにする
