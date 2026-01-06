@@ -6,7 +6,10 @@ epsilon_start: 1.0
 epsilon_finish: 0.05
 # epsilon_anneal_time: 50000
 epsilon_anneal_proportion: 0.8
-epsilon_oscillation: "tanh_sine_phase-0.5" # epsilonを振動させる
+epsilon_oscillation: False # epsilonを振動させる
+
+enable_fixed_wait_action_prob: True # Trueなら、epsilon-greedyでランダム行動を取るときに待機行動が選ばれる確率がfixed_wait_action_probに固定される
+fixed_wait_action_prob: 0
 
 runner: "episode"
 
