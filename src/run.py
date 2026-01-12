@@ -39,10 +39,10 @@ def run(_run, _config, _log: lg.Logger):
             else:
                 flat_dict[f"{key}"] = value
         return flat_dict
-    # TODO flatten後にやる方が効率的
-    filters = {k: v for k, v in _config.items() if k not in ["use_cuda", "buffer_cpu_only", "wandb_id", "seed"]}
-    filters["env_args"] = {k: v for k, v in filters["env_args"].items() if k not in ["debug", "seed"]}
-    filters = flatten_dict(filters)
+    # flatten後にフィルタリングする方が効率的
+    filters = flatten_dict(_config)
+    exclude_keys = ["use_cuda", "buffer_cpu_only", "wandb_id", "seed", "env_args.debug", "env_args.seed"]
+    filters = {k: v for k, v in filters.items() if k not in exclude_keys}
     filters = {f"config.{k}": v for k, v in filters.items()}
     filters["state"] = "finished"
     pprint.pprint(filters)
