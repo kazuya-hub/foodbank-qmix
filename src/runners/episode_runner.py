@@ -24,7 +24,7 @@ class EpisodeRunner:
         assert self.batch_size == 1
 
         # 環境
-        self.env = FoodAllocationEnv(logger=self.logger, **self.args.env_args)
+        self.env = FoodAllocationEnv(self.args, logger=self.logger)
 
         self.episode = 0
 
@@ -115,7 +115,7 @@ class EpisodeRunner:
             # Receive the actions for each agent at this timestep in a batch of size 1
             # 現時点のバッチ（エピソードの最初から今までの遷移情報が含まれている）を渡して、Agent Networkから行動を決定
             actions = self.mac.select_actions(
-                self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode, logger=self.logger, print_log=print_log)
+                self.batch, ep=self.episode, t_ep=self.t, t_env=self.t_env, test_mode=test_mode, logger=self.logger, print_log=print_log)
 
             # 行動を出力して、環境からフィードバックを得る
             # 返り値 = 報酬，エピソードが終了したか，環境情報
@@ -158,7 +158,7 @@ class EpisodeRunner:
         # Select actions in the last stored state
         # 終端状態における行動をAgent Networkから決定（？）
         actions = self.mac.select_actions(
-            self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode, logger=self.logger, print_log=print_log)
+            self.batch, ep=self.episode, t_ep=self.t, t_env=self.t_env, test_mode=test_mode, logger=self.logger, print_log=print_log)
         # バッチに最後の行動を追加
         self.batch.update({"actions": actions}, ts=self.t)
 

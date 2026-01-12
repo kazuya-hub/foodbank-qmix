@@ -6,6 +6,9 @@ import torch as th
 from torch.optim import RMSprop, Adam
 from controllers.basic_controller import BasicMAC
 from utils.logging import Logger
+import wandb
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class QLearner:
@@ -50,11 +53,21 @@ class QLearner:
         """
         # Get the relevant quantities
         # バッチからデータを取り出す
+
+        # rewards shape: torch.Size([バッチサイズ, (最大)エピソード長-1, 1])
         rewards = batch["reward"][:, :-1]
+
+        # actions shape: torch.Size([バッチサイズ, (最大)エピソード長-1, エージェント数, 1])
         actions = batch["actions"][:, :-1]
+
+        # terminated shape: torch.Size([バッチサイズ, (最大)エピソード長-1, 1])
         terminated = batch["terminated"][:, :-1].float()
+
+        # mask shape: torch.Size([バッチサイズ, (最大)エピソード長-1, 1])
         mask = batch["filled"][:, :-1].float()
         mask[:, 1:] = mask[:, 1:] * (1 - terminated[:, :-1])
+
+        # avail_actions shape: torch.Size([バッチサイズ, (最大)エピソード長, エージェント数, 行動数])
         avail_actions = batch["avail_actions"]
 
         # Calculate estimated Q-Values
@@ -72,10 +85,12 @@ class QLearner:
         # エージェントごとに時系列を連結
         # [ [t_1の全エージェント分の出力], [t_2], ... , [t_n] ] だったのが
         # [ [Agent1のt_1 ~ t_nの出力], [Agent2のt_1 ~ t_nの出力], ... ] となる
+        # ↑（2025/07/18追記）mac_outのshapeを見ると [バッチサイズ, (最大)エピソード長, エージェント数, 行動数] となっているので違う気がする
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
 
         # Pick the Q-Values for the actions taken by each agent
         # 全行動分のQ値から、実際に選択された行動のQ値を選ぶ
+        # Shape: [バッチサイズ, (最大)エピソード長-1, エージェント数]
         chosen_action_qvals = th.gather(
             mac_out[:, :-1], dim=3, index=actions).squeeze(3)  # Remove the last dim
 
@@ -128,14 +143,29 @@ class QLearner:
 
         # Mix
         # Mixing Networkに入力して重みづけして足されたQ値を得る
+        # chose_action_qvals や target_max_qvals はここまで各エージェントのQ_iだったが、ここでQ_totになりShapeも変わる
         if self.mixer is not None:
             # （現在の予測値）
             # 入力 : 全エージェントの実際に選択された行動のQ値 & グローバルな状態
-            chosen_action_qvals = self.mixer(
-                chosen_action_qvals, batch["state"][:, :-1])
+            # Shape: [バッチサイズ, (最大)エピソード長, 1]
+            chosen_action_qvals_sample0 = chosen_action_qvals[0].clone()
+            if t_env - self.log_stats_t >= self.args.learner_log_interval:
+                chosen_action_qvals = self.mixer(
+                    chosen_action_qvals, batch["state"][:, :-1], wandb_log=True, t_env=t_env)
+            else:
+                chosen_action_qvals = self.mixer(
+                    chosen_action_qvals, batch["state"][:, :-1])
+
+            if self.args.override_wait_action_Qi_to_0:
+                # 待機行動のQ_iを0に上書きする
+                is_wait_action = (actions.detach().squeeze() == self.args.n_actions - 1)
+                # 0代入でなく0乗算なのは計算グラフを更新するために必要らしいため
+                # 将来的に0以外にしたい場合はtorch.whereを使うのが良さそう
+                chosen_action_qvals = chosen_action_qvals * (~is_wait_action).float()
 
             # (次状態の最大Q値)
             # 入力 : 全エージェントの次状態における最大のQ値 & グローバルな次状態
+            # Shape: [バッチサイズ, (最大)エピソード長, 1]
             target_max_qvals = self.target_mixer(
                 target_max_qvals, batch["state"][:, 1:])
 
@@ -148,6 +178,7 @@ class QLearner:
 
         # Td-error
         # TD誤差 = 予測値(実際に選択した行動のQ値）- 目標値
+        # Shape: [バッチサイズ, (最大)エピソード長, 1]
         td_error = (chosen_action_qvals - targets.detach())
 
         mask = mask.expand_as(td_error)
@@ -185,6 +216,54 @@ class QLearner:
             self.logger.log_stat(
                 "target_mean", (targets * mask).sum().item() / (mask_elems * self.args.n_agents), t_env)
             self.log_stats_t = t_env
+
+            # fig, ax = plt.subplots()
+            # data = (chosen_action_qvals * mask).squeeze().detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="coolwarm",
+            #     vmax=2.0,
+            #     center=0,
+            #     vmin=-2.0,
+            #     ax=ax,
+            #     annot=True,
+            #     fmt=".2f"
+            # )
+            # wandb.log({"chosen_action_qvals_mixed": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
+
+            # fig, ax = plt.subplots(figsize=(8, 6))
+            # data = (chosen_action_qvals_sample0 * mask[0]).squeeze().detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="coolwarm",
+            #     vmax=2.0,
+            #     center=0,
+            #     vmin=-2.0,
+            #     ax=ax,
+            #     annot=True,
+            #     fmt=".2f"
+            # )
+            # ax.set_ylabel("Timestep")
+            # ax.set_xlabel("Agent")
+            # wandb.log({"chosen_action_qvals_sample0": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
+
+            # fig, ax = plt.subplots(figsize=(3, 6))
+            # data = (chosen_action_qvals * mask)[0].detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="coolwarm",
+            #     vmax=2.0,
+            #     center=0,
+            #     vmin=-2.0,
+            #     ax=ax,
+            #     annot=True,
+            #     fmt=".2f"
+            # )
+            # ax.set_ylabel("Timestep")
+            # wandb.log({"chosen_action_qvals_sample0_mixed": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
 
     def _update_targets(self):
         """

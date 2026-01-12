@@ -11,6 +11,14 @@ epsilon_oscillation: False # epsilonを振動させる
 enable_fixed_wait_action_prob: True # Trueなら、epsilon-greedyでランダム行動を取るときに待機行動が選ばれる確率がfixed_wait_action_probに固定される
 fixed_wait_action_prob: 0
 
+# env_args.disable_strategic_waitをTrueにすると待機行動はもはや行動と呼べなくなる
+# （食品が残っているときは選択できず、残っていないときは待機行動以外に選択肢がない）ので
+# override_wait_action_QiをTrueにしなければ学習が不安定になる可能性がある。
+# TrueにするとAgentNetworkの待機行動に相当するノードには勾配が流れなくなり、
+# 待機行動の価値を学習しなくなる（AgentNetworkの表現力を他のルールに割けるようになる）し、
+# MixingNetworkも待機行動のQ_iが変動することによるノイズを受けなくなる。と、期待される。
+override_wait_action_Qi_to_0: False # MixingNetworkへ渡す待機行動のQ_i値を0.0に固定する
+
 runner: "episode"
 
 buffer_size: 5000

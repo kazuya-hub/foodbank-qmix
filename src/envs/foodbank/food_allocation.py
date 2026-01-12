@@ -3,6 +3,7 @@ import enum
 import copy
 import logging
 from utils.logging import Logger
+from types import SimpleNamespace
 
 from envs.foodbank.food_situations import get_food_params
 
@@ -30,8 +31,10 @@ class FoodAllocationEnv():
     フードバンクにおけるマルチエージェント食品分配シミュレーション環境
     """
 
-    def __init__(self, full_observable, episode_limit, debug, situation_name, reward_mean_weight, reward_std_weight, reward_complete_bonus, reward_step_cost, seed, logger: Logger):
-        food_params = get_food_params(situation_name)
+    def __init__(self, args, logger: Logger):
+        self.args = args
+        self.args.env_args = SimpleNamespace(**args.env_args)
+        food_params = get_food_params(self.args.env_args.situation_name)
 
         self.n_agents = food_params["n_agents"]
 
@@ -39,20 +42,20 @@ class FoodAllocationEnv():
         self.requests = np.array(food_params["requests"])
         self.initial_stock = np.array(food_params["initial_stock"])
 
-        self.reward_step_cost = reward_step_cost
-        self.reward_mean_weight = reward_mean_weight
-        self.reward_std_weight = reward_std_weight
-        self.reward_complete_bonus = reward_complete_bonus
+        self.reward_step_cost = args.env_args.reward_step_cost
+        self.reward_mean_weight = args.env_args.reward_mean_weight
+        self.reward_std_weight = args.env_args.reward_std_weight
+        self.reward_complete_bonus = args.env_args.reward_complete_bonus
 
-        self.episode_limit = episode_limit
+        self.episode_limit = args.env_args.episode_limit
 
         self.n_actions = self.n_foods + 1
 
         self._step_count = None
         # self._episode_count = 0
 
-        self.full_observable = full_observable
-        self.debug = debug
+        self.full_observable = args.env_args.full_observable
+        self.debug = args.env_args.debug
 
         self.timeouts = 0
 
@@ -328,7 +331,13 @@ class FoodAllocationEnv():
                 self.agents_stock[agent_i] < self.requests[agent_i])
             # avail_food = self.bank_stock > 0
             avail_agent[avail_food] = 1
-            avail_actions.append(np.append(avail_agent, 1))
+
+            if (self.args.env_args.disable_strategic_wait == True) and np.any(avail_food):
+                # 取得可能な食品がある場合は待機行動を禁止
+                is_waiting_available = False
+            else:
+                is_waiting_available = True
+            avail_actions.append(np.append(avail_agent, 1 if is_waiting_available else 0))
 
             if self.print_log:
                 self.logger.console_logger.debug(

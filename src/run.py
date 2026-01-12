@@ -18,6 +18,7 @@ from learners.q_learner import QLearner
 from components.episode_buffer import EpisodeBatch, ReplayBuffer
 from components.transforms import OneHot
 
+from my_utils import array_logger
 
 def run(_run, _config, _log: lg.Logger):
     '''
@@ -26,6 +27,32 @@ def run(_run, _config, _log: lg.Logger):
     # check args sanity
     # 引数をチェック
     _config = args_sanity_check(_config, _log)
+
+    # 同じ学習結果が期待されるrunだけを検索する
+    def flatten_dict(d):
+        flat_dict = {}
+        for key, value in d.items():
+            if isinstance(value, dict):
+                nested_flat = flatten_dict(value)
+                for nested_key, nested_value in nested_flat.items():
+                    flat_dict[f"{key}.{nested_key}"] = nested_value
+            else:
+                flat_dict[f"{key}"] = value
+        return flat_dict
+    # TODO flatten後にやる方が効率的
+    filters = {k: v for k, v in _config.items() if k not in ["use_cuda", "buffer_cpu_only", "wandb_id", "seed"]}
+    filters["env_args"] = {k: v for k, v in filters["env_args"].items() if k not in ["debug", "seed"]}
+    filters = flatten_dict(filters)
+    filters = {f"config.{k}": v for k, v in filters.items()}
+    filters["state"] = "finished"
+    pprint.pprint(filters)
+    runs = wandb.Api().runs("kazuyasakakibara/FoodBank2025", filters=filters)
+    # for run in runs:
+    #     print(f"Found existing run: {run.name} ({run.id})")
+    print(runs)
+    print(len(runs))
+    print("exit")
+    exit(0)
 
     # 名前空間
     # args["###"]ではなく、args.### の形でパラメータへアクセスできる
@@ -54,6 +81,9 @@ def run(_run, _config, _log: lg.Logger):
 
     # sacred is on by default
     logger.setup_sacred(_run)
+
+    print(array_logger)
+    # array_logger.init(root_path=f"./results/array_logger/{args.wandb_id}")
 
     # Run and train
     # 学習開始
@@ -175,6 +205,10 @@ def run_sequential(args, logger: Logger):
     #     if args.evaluate or args.save_replay:
     #         evaluate_sequential(args, runner)
     #         return
+
+    # この時点で学習に必要なすべてのパーツが初期化され、各種ロガーも設定済みのはず
+    print(array_logger.list_registered())
+    exit(0)
 
     # start training
     # ----------------- トレーニング開始！！！ -----------------

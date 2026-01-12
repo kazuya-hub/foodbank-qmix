@@ -5,13 +5,15 @@ env_args:
   episode_limit: 50
   debug: True
 
-  situation_name: "10a10f_c8"
+  situation_name: "20a20f_c1"
 
   reward_mean_weight: 1
   reward_std_weight: 1
   reward_complete_bonus: 1
   reward_step_cost: -0.01
   
+  disable_strategic_wait: True # Trueなら、取得可能な食品がある時は待機行動を選ばないようにする
+
   # n_agents: 2
   # n_foods: 2
   # initial_stock:
