@@ -130,9 +130,16 @@ class QLearner:
         # Mixing Networkに入力して重みづけして足されたQ値を得る
         if self.mixer is not None:
             # （現在の予測値）
-            # 入力 : 全エージェントの実際に選択された行動のQ値 & グローバルな状態
-            chosen_action_qvals = self.mixer(
-                chosen_action_qvals, batch["state"][:, :-1])
+
+            if self.args.override_wait_action_Qi_to_0:
+                # 待機行動のQ_iを0に上書きする
+                is_wait_action = (actions.detach().squeeze() == self.args.n_actions - 1)
+                # 0代入でなく0乗算なのは計算グラフを更新するために必要らしいため
+                # 将来的に0以外にしたい場合はtorch.whereを使うのが良さそう
+                # print("chosen_action_qvals before override: ", chosen_action_qvals.shape, chosen_action_qvals[0].cpu().detach().numpy())
+                chosen_action_qvals = chosen_action_qvals * (~is_wait_action).float()
+                # print("chosen_action_qvals after override: ", chosen_action_qvals.shape)
+                # print(chosen_action_qvals[0].cpu().detach().numpy())
 
             # (次状態の最大Q値)
             # 入力 : 全エージェントの次状態における最大のQ値 & グローバルな次状態
