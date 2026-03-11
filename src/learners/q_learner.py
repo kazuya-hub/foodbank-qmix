@@ -166,6 +166,7 @@ class QLearner:
         # Normal L2 loss, take mean over actual data
         # MSE（平均二乗誤差）
         loss = (masked_td_error ** 2).sum() / mask.sum()
+        wandb.log({"loss": loss.item()}, step=t_env)
 
         # Optimise
         # 誤差逆伝播
