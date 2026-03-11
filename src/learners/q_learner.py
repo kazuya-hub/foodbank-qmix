@@ -6,6 +6,9 @@ import torch as th
 from torch.optim import RMSprop, Adam
 from controllers.basic_controller import BasicMAC
 from utils.logging import Logger
+import wandb
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class QLearner:
@@ -156,6 +159,13 @@ class QLearner:
                 # print("chosen_action_qvals after override: ", chosen_action_qvals.shape)
                 # print(chosen_action_qvals[0].cpu().detach().numpy())
 
+            chosen_action_qvals_sample0 = chosen_action_qvals[0].clone()
+            if t_env - self.log_stats_t >= self.args.learner_log_interval:
+                chosen_action_qvals = self.mixer(
+                    chosen_action_qvals, batch["state"][:, :-1], wandb_log=True, t_env=t_env)
+            else:
+                chosen_action_qvals = self.mixer(
+                    chosen_action_qvals, batch["state"][:, :-1])
 
             # chosen_action_qvals shape: [バッチサイズ, (最大)エピソード長-1, 1]
 
@@ -214,6 +224,54 @@ class QLearner:
             self.logger.log_stat(
                 "target_mean", (targets * mask).sum().item() / (mask_elems * self.args.n_agents), t_env)
             self.log_stats_t = t_env
+
+            # fig, ax = plt.subplots()
+            # data = (chosen_action_qvals * mask).squeeze().detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="coolwarm",
+            #     vmax=2.0,
+            #     center=0,
+            #     vmin=-2.0,
+            #     ax=ax,
+            #     annot=True,
+            #     fmt=".2f"
+            # )
+            # wandb.log({"chosen_action_qvals_mixed": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
+
+            # fig, ax = plt.subplots(figsize=(8, 6))
+            # data = (chosen_action_qvals_sample0 * mask[0]).squeeze().detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="coolwarm",
+            #     vmax=2.0,
+            #     center=0,
+            #     vmin=-2.0,
+            #     ax=ax,
+            #     annot=True,
+            #     fmt=".2f"
+            # )
+            # ax.set_ylabel("Timestep")
+            # ax.set_xlabel("Agent")
+            # wandb.log({"chosen_action_qvals_sample0": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
+
+            # fig, ax = plt.subplots(figsize=(3, 6))
+            # data = (chosen_action_qvals * mask)[0].detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="coolwarm",
+            #     vmax=2.0,
+            #     center=0,
+            #     vmin=-2.0,
+            #     ax=ax,
+            #     annot=True,
+            #     fmt=".2f"
+            # )
+            # ax.set_ylabel("Timestep")
+            # wandb.log({"chosen_action_qvals_sample0_mixed": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
 
     def _update_targets(self):
         """

@@ -2,6 +2,9 @@ import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import wandb
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class QMixer(nn.Module):
@@ -39,7 +42,7 @@ class QMixer(nn.Module):
                                nn.ReLU(),
                                nn.Linear(self.embed_dim, 1))
 
-    def forward(self, agent_qs, states):
+    def forward(self, agent_qs, states, wandb_log=False, t_env=None):
         bs = agent_qs.size(0)
         states = states.reshape(-1, self.state_dim) # shape: (バッチサイズ * (最大)エピソード長, 状態の次元数)
         agent_qs = agent_qs.view(-1, 1, self.n_agents) # shape: (バッチサイズ * (最大)エピソード長, 1, エージェント数)
@@ -49,6 +52,8 @@ class QMixer(nn.Module):
         w1 = w1.view(-1, self.n_agents, self.embed_dim) # shape: (バッチサイズ * (最大)エピソード長, エージェント数, embed_dim)
         b1 = b1.view(-1, 1, self.embed_dim) # shape: (バッチサイズ * (最大)エピソード長, 1, embed_dim)
 
+        hidden_p = th.bmm(agent_qs, w1) + b1
+        hidden = F.elu(hidden_p) # shape: (バッチサイズ * (最大)エピソード長, 1, embed_dim)
         # Second layer
         w_final = th.abs(self.hyper_w_final(states))
         w_final = w_final.view(-1, self.embed_dim, 1) # shape: (バッチサイズ * (最大)エピソード長, embed_dim, 1)
@@ -58,4 +63,94 @@ class QMixer(nn.Module):
         y = th.bmm(hidden, w_final) + v # shape: (バッチサイズ * (最大)エピソード長, 1, 1)
         # Reshape and return
         q_tot = y.view(bs, -1, 1) # shape: (バッチサイズ, (最大)エピソード長, 1)
+        if wandb_log:
+            # fig, ax = plt.subplots()
+            # data = w1.view(bs, -1, self.n_agents * self.embed_dim)[0].detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="Reds",
+            #     vmin=0,
+            #     ax=ax,
+            # )
+            # ax.set_ylabel("Timestep")
+            # ax.set_xticks(range(0, self.n_agents * self.embed_dim, self.embed_dim))
+            # for x in range(0, self.n_agents * self.embed_dim, self.embed_dim):
+            #     ax.axvline(x, color='black', linewidth=0.5)
+            # wandb.log({"w1_n_agents>embed_dim": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
+
+            # fig, ax = plt.subplots()
+            data = w1.permute(0, 2, 1).reshape(bs, -1, self.n_agents * self.embed_dim)[0].detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="Reds",
+            #     vmin=0,
+            #     ax=ax,
+            # )
+            # ax.set_ylabel("Timestep")
+            # ax.set_xticks(range(0, self.n_agents * self.embed_dim, self.n_agents))
+            # for x in range(0, self.n_agents * self.embed_dim, self.n_agents):
+            #     ax.axvline(x, color='black', linewidth=0.5)
+            # wandb.log({"w1_embed_dim>n_agents": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
+
+            # fig, ax = plt.subplots()
+            data = b1.view(bs, -1, self.embed_dim)[0].detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="coolwarm",
+            #     center=0,
+            #     ax=ax,
+            # )
+            # ax.set_ylabel("Timestep")
+            # wandb.log({"b1": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
+
+            # fig, ax = plt.subplots()
+            data = hidden_p.view(bs, -1, self.embed_dim)[0].detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="coolwarm",
+            #     center=0,
+            #     ax=ax,
+            # )
+            # ax.set_ylabel("Timestep")
+            # wandb.log({"hidden_p": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
+
+            # fig, ax = plt.subplots()
+            data = hidden.view(bs, -1, self.embed_dim)[0].detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="coolwarm",
+            #     center=0,
+            #     ax=ax,
+            # )
+            # ax.set_ylabel("Timestep")
+            # wandb.log({"hidden": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
+
+            # fig, ax = plt.subplots()
+            data = w_final.view(bs, -1, self.embed_dim)[0].detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="Reds",
+            #     vmin=0,
+            #     ax=ax,
+            # )
+            # ax.set_ylabel("Timestep")
+            # wandb.log({"w_final": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
+
+            # fig, ax = plt.subplots()
+            data = v.view(bs, -1, 1)[0].detach().numpy()
+            # sns.heatmap(
+            #     data,
+            #     cmap="coolwarm",
+            #     center=0,
+            #     ax=ax,
+            # )
+            # ax.set_ylabel("Timestep")
+            # wandb.log({"v": wandb.Image(fig)}, step=t_env)
+            # plt.close(fig)  # メモリリーク防止
         return q_tot
