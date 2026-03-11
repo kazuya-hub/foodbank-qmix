@@ -81,6 +81,8 @@ class QMixer(nn.Module):
 
             # fig, ax = plt.subplots()
             data = w1.permute(0, 2, 1).reshape(bs, -1, self.n_agents * self.embed_dim)[0].detach().numpy()
+            columns = ["weight_{}".format(i) for i in range(self.n_agents * self.embed_dim)]
+            wandb.log({"w1_table_embed_dim>n_agents": wandb.Table(data=data, columns=columns)}, step=t_env)
             # sns.heatmap(
             #     data,
             #     cmap="Reds",
@@ -96,6 +98,8 @@ class QMixer(nn.Module):
 
             # fig, ax = plt.subplots()
             data = b1.view(bs, -1, self.embed_dim)[0].detach().numpy()
+            columns = ["embed_node_{}".format(i) for i in range(self.embed_dim)]
+            wandb.log({"b1_table": wandb.Table(data=data, columns=columns)}, step=t_env)
             # sns.heatmap(
             #     data,
             #     cmap="coolwarm",
@@ -108,6 +112,8 @@ class QMixer(nn.Module):
 
             # fig, ax = plt.subplots()
             data = hidden_p.view(bs, -1, self.embed_dim)[0].detach().numpy()
+            columns = ["embed_node_{}".format(i) for i in range(self.embed_dim)]
+            wandb.log({"hidden_p_table": wandb.Table(data=data, columns=columns)}, step=t_env)
             # sns.heatmap(
             #     data,
             #     cmap="coolwarm",
@@ -120,6 +126,8 @@ class QMixer(nn.Module):
 
             # fig, ax = plt.subplots()
             data = hidden.view(bs, -1, self.embed_dim)[0].detach().numpy()
+            columns = ["embed_node_{}".format(i) for i in range(self.embed_dim)]
+            wandb.log({"hidden_table": wandb.Table(data=data, columns=columns)}, step=t_env)
             # sns.heatmap(
             #     data,
             #     cmap="coolwarm",
@@ -132,6 +140,8 @@ class QMixer(nn.Module):
 
             # fig, ax = plt.subplots()
             data = w_final.view(bs, -1, self.embed_dim)[0].detach().numpy()
+            columns = ["embed_node_{}".format(i) for i in range(self.embed_dim)]
+            wandb.log({"w_final_table": wandb.Table(data=data, columns=columns)}, step=t_env)
             # sns.heatmap(
             #     data,
             #     cmap="Reds",
@@ -144,6 +154,8 @@ class QMixer(nn.Module):
 
             # fig, ax = plt.subplots()
             data = v.view(bs, -1, 1)[0].detach().numpy()
+            columns = ["v"]
+            wandb.log({"v_table": wandb.Table(data=data, columns=columns)}, step=t_env)
             # sns.heatmap(
             #     data,
             #     cmap="coolwarm",
