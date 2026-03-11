@@ -10,6 +10,9 @@ import wandb
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import numpy as np
+from my_utils import array_logger
+from my_utils import shared
 
 class QLearner:
     """
@@ -46,6 +49,26 @@ class QLearner:
         self.target_mac = copy.deepcopy(mac)
 
         self.log_stats_t = -self.args.learner_log_interval - 1
+
+        if shared.array_logger_enabled:
+            array_logger.register(name="fc1_weight", keys=["t_env"], shape=self.mac.agent.fc1.weight.shape, dtype=np.float32)
+            array_logger.register(name="fc1_bias", keys=["t_env"], shape=self.mac.agent.fc1.bias.shape, dtype=np.float32)
+            array_logger.register(name="rnn_weight_ih", keys=["t_env"], shape=self.mac.agent.rnn.weight_ih.shape, dtype=np.float32)
+            array_logger.register(name="rnn_weight_hh", keys=["t_env"], shape=self.mac.agent.rnn.weight_hh.shape, dtype=np.float32)
+            array_logger.register(name="rnn_bias_ih", keys=["t_env"], shape=self.mac.agent.rnn.bias_ih.shape, dtype=np.float32)
+            array_logger.register(name="rnn_bias_hh", keys=["t_env"], shape=self.mac.agent.rnn.bias_hh.shape, dtype=np.float32)
+            array_logger.register(name="fc2_weight", keys=["t_env"], shape=self.mac.agent.fc2.weight.shape, dtype=np.float32)
+            array_logger.register(name="fc2_bias", keys=["t_env"], shape=self.mac.agent.fc2.bias.shape, dtype=np.float32)
+
+            if self.mixer is not None:
+                array_logger.register(name="mask", keys=["t_env"], shape=(self.args.batch_size, self.args.env_args.episode_limit-1, 1), dtype=np.float32)
+                array_logger.register(name="rewards", keys=["t_env"], shape=(self.args.batch_size, self.args.env_args.episode_limit-1, 1), dtype=np.float32)
+                array_logger.register(name="target_max_qvals", keys=["t_env"], shape=(self.args.batch_size, self.args.env_args.episode_limit-1, 1), dtype=np.float32)
+                array_logger.register(name="targets", keys=["t_env"], shape=(self.args.batch_size, self.args.env_args.episode_limit-1, 1), dtype=np.float32)
+                array_logger.register(name="chosen_action_qvals", keys=["t_env"], shape=(self.args.batch_size, self.args.env_args.episode_limit-1, 1), dtype=np.float32)
+                array_logger.register(name="td_error", keys=["t_env"], shape=(self.args.batch_size, self.args.env_args.episode_limit-1, 1), dtype=np.float32)
+                array_logger.register(name="masked_td_error", keys=["t_env"], shape=(self.args.batch_size, self.args.env_args.episode_limit-1, 1), dtype=np.float32)
+                array_logger.register(name="loss", keys=["t_env"], shape=(1,), dtype=np.float64)
 
     def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         """
@@ -199,10 +222,34 @@ class QLearner:
         loss = (masked_td_error ** 2).sum() / mask.sum()
         wandb.log({"loss": loss.item()}, step=t_env)
 
+        if shared.array_logger_enabled and self.mixer is not None:
+            array_logger.log(name="mask", key_values={"t_env": t_env}, array=mask.cpu().numpy(), zero_padding=True)
+            array_logger.log(name="rewards", key_values={"t_env": t_env}, array=rewards.cpu().numpy(), zero_padding=True)
+            array_logger.log(name="target_max_qvals", key_values={"t_env": t_env}, array=target_max_qvals.cpu().detach().numpy(), zero_padding=True)
+            array_logger.log(name="targets", key_values={"t_env": t_env}, array=targets.cpu().detach().numpy(), zero_padding=True)
+            array_logger.log(name="chosen_action_qvals", key_values={"t_env": t_env}, array=chosen_action_qvals.cpu().detach().numpy(), zero_padding=True)
+            array_logger.log(name="td_error", key_values={"t_env": t_env}, array=td_error.cpu().detach().numpy(), zero_padding=True)
+            array_logger.log(name="masked_td_error", key_values={"t_env": t_env}, array=masked_td_error.cpu().detach().numpy(), zero_padding=True)
+            array_logger.log(name="loss", key_values={"t_env": t_env}, array=np.array([loss.item()]))
+
         # Optimise
         # 誤差逆伝播
         self.optimiser.zero_grad()
         loss.backward()
+
+        if shared.array_logger_enabled and t_env - self.log_stats_t >= self.args.learner_log_interval:
+            array_logger.log(name="fc1_weight", key_values={"t_env": t_env}, array=self.mac.agent.fc1.weight.cpu().detach().numpy())
+            array_logger.log(name="fc1_bias", key_values={"t_env": t_env}, array=self.mac.agent.fc1.bias.cpu().detach().numpy())
+            array_logger.log(name="rnn_weight_ih", key_values={"t_env": t_env}, array=self.mac.agent.rnn.weight_ih.cpu().detach().numpy())
+            array_logger.log(name="rnn_weight_hh", key_values={"t_env": t_env}, array=self.mac.agent.rnn.weight_hh.cpu().detach().numpy())
+            array_logger.log(name="rnn_bias_ih", key_values={"t_env": t_env}, array=self.mac.agent.rnn.bias_ih.cpu().detach().numpy())
+            array_logger.log(name="rnn_bias_hh", key_values={"t_env": t_env}, array=self.mac.agent.rnn.bias_hh.cpu().detach().numpy())
+            array_logger.log(name="fc2_weight", key_values={"t_env": t_env}, array=self.mac.agent.fc2.weight.cpu().detach().numpy())
+            array_logger.log(name="fc2_bias", key_values={"t_env": t_env}, array=self.mac.agent.fc2.bias.cpu().detach().numpy())
+
+            if self.mixer is not None:
+                self.mixer.log_all_parameters_to_array_logger(t_env)
+
         grad_norm = th.nn.utils.clip_grad_norm_(
             self.params, self.args.grad_norm_clip)
         self.optimiser.step()

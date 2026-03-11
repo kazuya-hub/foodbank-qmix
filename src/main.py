@@ -17,11 +17,14 @@ import argparse
 
 from run import run
 
+from my_utils import array_logger
+from my_utils import shared
+
 # set to "no" if you want to see stdout/stderr in console
 # Sacredの標準出力設定 "sys"(Windows), "fd"(Linux), "no"
 SETTINGS["CAPTURE_MODE"] = "no"
 
-WANDB_PROJECT = "test"
+WANDB_PROJECT = "FoodBank2025"
 WANDB_ENTITY = "kazuyasakakibara"
 
 logger = get_logger()
@@ -42,6 +45,10 @@ def my_main(_run: Run, _config, _log):
     """
     Sacredで実験を実行すると最初に呼び出される
     """
+
+    # array_logger の初期化
+    array_logger.init(run_id=wandb.run.id)
+    
     # Setting the random seed throughout the modules
     config = deepcopy(_config)
     np.random.seed(config["seed"])
@@ -50,6 +57,9 @@ def my_main(_run: Run, _config, _log):
 
     # run the framework
     run(_run, config, _log)
+    
+    # Close array_logger
+    array_logger.close()
 
     # ログファイルを記録
     _run.add_artifact(os.path.join(results_path, "run_full.log"))  # Scared

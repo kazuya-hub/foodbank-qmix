@@ -3,6 +3,11 @@ from torch.distributions import Categorical
 from .epsilon_schedules import DecayThenFlatSchedule
 from utils.logging import Logger
 import numpy as np
+import matplotlib.pyplot as plt
+import wandb
+
+from my_utils import array_logger
+from my_utils import shared
 
 REGISTRY = {}
 
@@ -45,8 +50,39 @@ class EpsilonGreedyActionSelector():
                                               decay="linear")
         self.epsilon = self.schedule.eval(0)
 
-    def select_action(self, agent_inputs, avail_actions, t_env, test_mode=False, logger:Logger = None, print_log=False):
+        # array_logger.register(
+        #     name="avail_actions",
+        #     keys=["t_env", "episode", "t_ep"],
+        #     shape=(args.n_agents, args.n_actions),
+        #     dtype=np.bool,
+        # )
 
+        # array_logger.register(
+        #     name="pick_random",
+        #     keys=["t_env", "episode", "t_ep"],
+        #     shape=(args.n_agents,),
+        #     dtype=np.bool,
+        # )
+
+        # array_logger.register(
+        #     name="picked_actions",
+        #     keys=["t_env", "episode", "t_ep"],
+        #     shape=(args.n_agents,),
+        #     dtype=np.uint8,
+        # )
+
+    def select_action(self, agent_inputs, avail_actions, ep, t_ep, t_env, test_mode=False, logger:Logger = None, print_log=False):
+        # avail_actions.shape : [1, エージェント数, 行動数 ] (dtype:int32、選択可能なら1、不可なら0)
+        # array_logger.log(
+        #     name="avail_actions",
+        #     key_values= {
+        #         "t_env": t_env,
+        #         "episode": ep,
+        #         "t_ep": t_ep,
+        #     },
+        #     array=avail_actions[0].cpu().numpy().astype(np.bool)
+        # )
+        
         # Assuming agent_inputs is a batch of Q-Values for each agent bav
         self.epsilon = self.schedule.eval(t_env)
 
@@ -75,6 +111,16 @@ class EpsilonGreedyActionSelector():
 
         random_numbers = th.rand_like(agent_inputs[:, :, 0])
         pick_random = (random_numbers < self.epsilon).long() # shape: [1, n_agents]、dtype: int32
+        # array_logger.log(
+        #     name="pick_random",
+        #     key_values= {
+        #         "t_env": t_env,
+        #         "episode": ep,
+        #         "t_ep": t_ep,
+        #     },
+        #     array=pick_random[0].cpu().numpy().astype(np.bool)
+        # )
+
         if self.args.enable_fixed_wait_action_prob:
             # enable_fixed_wait_action_probがTrueなら、epsilon-greedyでランダム行動を取るときに
             # 待機行動が選ばれる確率がfixed_wait_action_probになるようにする
@@ -95,6 +141,15 @@ class EpsilonGreedyActionSelector():
 
         picked_actions = pick_random * random_actions + \
             (1 - pick_random) * masked_q_values.max(dim=2)[1]
+        # array_logger.log(
+        #     name="picked_actions",
+        #     key_values= {
+        #         "t_env": t_env,
+        #         "episode": ep,
+        #         "t_ep": t_ep,
+        #     },
+        #     array=picked_actions[0].cpu().numpy().astype(np.uint8)
+        # )
         return picked_actions
 
 

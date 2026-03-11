@@ -11,6 +11,9 @@ from controllers.basic_controller import BasicMAC
 from envs.foodbank.food_allocation import FoodAllocationEnv
 from utils.logging import Logger
 
+from my_utils import array_logger
+from my_utils import shared
+
 
 class EpisodeRunner:
     """
@@ -54,6 +57,14 @@ class EpisodeRunner:
 
         # 渡されたMACを保持
         self.mac = mac
+
+        if shared.array_logger_enabled:
+            keys = ["t_env", "episode", "t_ep"]
+            array_logger.register(name="state", keys=keys, shape=(scheme["state"]["vshape"],), dtype=np.float32)
+            array_logger.register(name="avail_actions", keys=keys, shape=(self.args.n_agents, self.args.n_actions), dtype=np.uint8)
+            array_logger.register(name="actions", keys=keys, shape=(self.args.n_agents,), dtype=np.uint8)
+            array_logger.register(name="reward", keys=keys, shape=(1,), dtype=np.float32)
+            array_logger.register(name="terminated", keys=keys, shape=(1,), dtype=np.bool)
 
     def get_env_info(self):
         """
@@ -115,7 +126,7 @@ class EpisodeRunner:
             # Receive the actions for each agent at this timestep in a batch of size 1
             # 現時点のバッチ（エピソードの最初から今までの遷移情報が含まれている）を渡して、Agent Networkから行動を決定
             actions = self.mac.select_actions(
-                self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode, logger=self.logger, print_log=print_log)
+                self.batch, ep=self.episode, t_ep=self.t, t_env=self.t_env, test_mode=test_mode, logger=self.logger, print_log=print_log)
 
             # 行動を出力して、環境からフィードバックを得る
             # 返り値 = 報酬，エピソードが終了したか，環境情報
@@ -137,6 +148,13 @@ class EpisodeRunner:
             # 遷移後の情報もバッチに追加
             self.batch.update(post_transition_data, ts=self.t)
 
+            if shared.array_logger_enabled:
+                key_values = {"t_env": self.t_env, "episode": self.episode, "t_ep": self.t}
+                array_logger.log(name="state", key_values=key_values, array=pre_transition_data["state"][0])
+                array_logger.log(name="avail_actions", key_values=key_values, array=np.stack(pre_transition_data["avail_actions"][0]).astype(np.uint8))
+                array_logger.log(name="actions", key_values=key_values, array=actions[0].detach().numpy().astype(np.uint8))
+                array_logger.log(name="reward", key_values=key_values, array=np.array(post_transition_data["reward"][0], dtype=np.float32))
+                array_logger.log(name="terminated", key_values=key_values, array=np.array(post_transition_data["terminated"][0], dtype=np.bool))
             # タイムステップを進める
             self.t += 1
 
@@ -158,7 +176,7 @@ class EpisodeRunner:
         # Select actions in the last stored state
         # 終端状態における行動をAgent Networkから決定（？）
         actions = self.mac.select_actions(
-            self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode, logger=self.logger, print_log=print_log)
+            self.batch, ep=self.episode, t_ep=self.t, t_env=self.t_env, test_mode=test_mode, logger=self.logger, print_log=print_log)
         # バッチに最後の行動を追加
         self.batch.update({"actions": actions}, ts=self.t)
 
