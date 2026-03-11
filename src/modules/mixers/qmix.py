@@ -41,21 +41,21 @@ class QMixer(nn.Module):
 
     def forward(self, agent_qs, states):
         bs = agent_qs.size(0)
-        states = states.reshape(-1, self.state_dim)
-        agent_qs = agent_qs.view(-1, 1, self.n_agents)
+        states = states.reshape(-1, self.state_dim) # shape: (バッチサイズ * (最大)エピソード長, 状態の次元数)
+        agent_qs = agent_qs.view(-1, 1, self.n_agents) # shape: (バッチサイズ * (最大)エピソード長, 1, エージェント数)
         # First layer
         w1 = th.abs(self.hyper_w_1(states))
         b1 = self.hyper_b_1(states)
-        w1 = w1.view(-1, self.n_agents, self.embed_dim)
-        b1 = b1.view(-1, 1, self.embed_dim)
-        hidden = F.elu(th.bmm(agent_qs, w1) + b1)
+        w1 = w1.view(-1, self.n_agents, self.embed_dim) # shape: (バッチサイズ * (最大)エピソード長, エージェント数, embed_dim)
+        b1 = b1.view(-1, 1, self.embed_dim) # shape: (バッチサイズ * (最大)エピソード長, 1, embed_dim)
+
         # Second layer
         w_final = th.abs(self.hyper_w_final(states))
-        w_final = w_final.view(-1, self.embed_dim, 1)
+        w_final = w_final.view(-1, self.embed_dim, 1) # shape: (バッチサイズ * (最大)エピソード長, embed_dim, 1)
         # State-dependent bias
-        v = self.V(states).view(-1, 1, 1)
+        v = self.V(states).view(-1, 1, 1) # shape: (バッチサイズ * (最大)エピソード長, 1, 1)
         # Compute final output
-        y = th.bmm(hidden, w_final) + v
+        y = th.bmm(hidden, w_final) + v # shape: (バッチサイズ * (最大)エピソード長, 1, 1)
         # Reshape and return
-        q_tot = y.view(bs, -1, 1)
+        q_tot = y.view(bs, -1, 1) # shape: (バッチサイズ, (最大)エピソード長, 1)
         return q_tot
