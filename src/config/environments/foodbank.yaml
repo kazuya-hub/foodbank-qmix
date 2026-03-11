@@ -12,6 +12,8 @@ env_args:
   reward_complete_bonus: 1
   reward_step_cost: -0.01
   
+  disable_strategic_wait: True # Trueなら、取得可能な食品がある時は待機行動を選ばないようにする
+
   # n_agents: 2
   # n_foods: 2
   # initial_stock:
